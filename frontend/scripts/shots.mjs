@@ -1,6 +1,6 @@
 // Скриншоты страниц на 1440 и 360 через headless Chrome или Edge, без лишних зависимостей.
-// npm run shots -- /applications/1044?as=sokolov [ещё маршруты…]
-// Нужен запущенный dev-сервер (npm run dev) с моками. ?as=<логин> входит под тестовой учёткой.
+// npm run shots -- login [ещё маршруты…]
+// Нужен запущенный dev-сервер (npm run dev) и бэкенд. Каждый снимок — в чистом профиле, без входа.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -25,7 +25,7 @@ if (!browser) {
 // В Git Bash ведущий «/» превращается в путь Windows, поэтому маршрут можно писать и без него.
 const routes = process.argv.slice(2).map((r) => (r.startsWith("/") ? r : "/" + r));
 if (!routes.length) {
-  console.error("Укажите маршрут: npm run shots -- /?as=bakery");
+  console.error("Укажите маршрут: npm run shots -- login");
   process.exit(1);
 }
 

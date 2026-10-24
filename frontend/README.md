@@ -7,22 +7,21 @@ React 18 + Vite, без UI-библиотек: компоненты и токе�
 ```bash
 cd frontend
 npm ci
-cp .env.example .env   # по умолчанию работает на моках, бэкенд не нужен
+cp .env.example .env
 npm run dev            # http://localhost:5173
 ```
 
-Тестовые учётки: `bakery`, `romashka`, `sokolov`, `ivanova`, `techprom`, `analyst`, пароль `demo`.
+Фронтенд работает только с бэкендом: без него на экране входа будет «Нет связи с сервером». Список тестовых учёток на экране входа — статичный текст из макета (`bakery`, `romashka`, `sokolov`, `ivanova`, `techprom`, `analyst`, пароль `demo`), бэкенду нужно завести такие же.
 
 ## Подключение бэкенда
 
 | Переменная | Что делает |
 |---|---|
-| `VITE_USE_MOCKS` | `true` — встроенный мок (`src/api/mock`), `false` — настоящий API |
 | `VITE_API_URL` | База запросов, по умолчанию `/api` |
 | `VITE_BACKEND_URL` | Куда dev-сервер проксирует `/api` (префикс `/api` срезается). По умолчанию `http://localhost:8000` |
 | `VITE_WS_URL` | Адрес вебсокетов, если отличается от API |
 
-Все запросы — в одном файле [src/api/real.js](src/api/real.js). Мок [src/api/mock/api.js](src/api/mock/api.js) реализует тот же интерфейс, по нему видно, какие поля ждёт фронтенд.
+Все запросы — в одном файле [src/api/real.js](src/api/real.js). Если путь или поле на бэкенде называется иначе, поправить нужно только его.
 
 - Авторизация: `Authorization: Bearer <access_token>` из `POST /auth/login`. Для вебсокета токен передаётся в `?token=`.
 - Ошибки: тело `{ "detail": "текст для человека" }`. Ошибки полей — `{ "errors": [{ "field": "amount", "message": "…" }] }` (или стандартный `detail[]` FastAPI с `loc`). Поля с точкой: `collateral.estimated_value`.
@@ -71,15 +70,11 @@ npm run dev            # http://localhost:5173
 
 Типы операций договора, которые фронтенд подписывает по-русски: `LOAN_ISSUED, LIMIT_OPENED, TRANCHE_ISSUED, TRANCHE_REPAID, INTEREST_ACCRUED, INTEREST_PAID, SCHEDULED_PAYMENT, PARTIAL_REPAYMENT, FULL_REPAYMENT` ([src/lib/labels.js](src/lib/labels.js)).
 
-## Мок
-
-Состояние мока хранится в `localStorage`, заявки идут по сценариям пяти тестовых компаний со сменой статусов во времени. Сбросить: `window.__ckMockReset()` в консоли. Только с моками работает `?as=<логин>` — сразу входит под учёткой.
-
 ## Скриншоты
 
 ```bash
 npm run dev
-npm run shots -- "?as=bakery" "applications/1044?as=sokolov"
+npm run shots -- login register
 ```
 
-Снимки 1440 × 900 и 360 × 800 появятся в `shots/`. Нужен Chrome или Edge, путь можно задать через `CHROME_PATH`.
+Каждый снимок делается в чистом профиле браузера, без входа, поэтому так снимаются только открытые страницы. Снимки 1440 × 900 и 360 × 800 появятся в `shots/`. Нужен Chrome или Edge, путь можно задать через `CHROME_PATH`.

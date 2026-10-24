@@ -1,6 +1,5 @@
 export const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
 export const WS_URL = (import.meta.env.VITE_WS_URL || "").replace(/\/$/, "");
-export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== "false";
 
 const TOKEN_KEY = "ck.token";
 

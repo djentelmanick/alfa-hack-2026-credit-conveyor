@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, USE_MOCKS } from "../api/index.js";
+import { api } from "../api/index.js";
 import { setUnauthorizedHandler, tokenStore } from "../api/client.js";
 
 const AuthContext = createContext(null);
@@ -24,11 +24,6 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     (async () => {
-      // Только в моках: ?as=bakery входит сразу под тестовой учёткой — для скриншотов и демо.
-      const as = USE_MOCKS && new URLSearchParams(window.location.search).get("as");
-      if (as) {
-        try { await api.login(as, "demo"); } catch { /* неизвестная учётка — покажем вход */ }
-      }
       if (tokenStore.get()) await loadMe();
       setLoading(false);
     })();
