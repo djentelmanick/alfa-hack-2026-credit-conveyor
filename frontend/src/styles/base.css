@@ -1,0 +1,22 @@
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--surface-page); }
+body { margin: 0; background: var(--surface-page); color: var(--ink); font: var(--text-body); -webkit-font-smoothing: antialiased; text-wrap: pretty; }
+h1, h2, h3, p { margin: 0; }
+a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--ink-muted); text-underline-offset: 0.2em; }
+a:hover { color: var(--ink); text-decoration-color: var(--ink); }
+:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.display { font: var(--text-display); letter-spacing: var(--text-display-tracking); margin: 0; }
+.h1 { font: var(--text-h1); margin: 0; }
+.h2 { font: var(--text-h2); margin: 0; }
+.money { font: var(--text-money); font-variant-numeric: tabular-nums; white-space: nowrap; margin: 0; }
+.body-strong { font: var(--text-body-strong); margin: 0; }
+.small { font: var(--text-small); margin: 0; }
+.muted { color: var(--ink-muted); }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.measure { max-width: var(--measure); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
