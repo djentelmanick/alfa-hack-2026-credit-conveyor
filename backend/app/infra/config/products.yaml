@@ -1,0 +1,49 @@
+# Параметры продуктов из SCOPE, раздел 2. Домен получает этот конфиг уже разобранным (ProductCatalog.from_config).
+purposes:
+  ONE_TIME_PURCHASE:
+    label: "Разовая закупка"
+    products: [LUMP_SUM, REVOLVING_LINE]
+    recommended: LUMP_SUM
+    explanation: "Разовая покупка оплачивается одной суммой, а кредит гасится равными платежами по графику."
+  DEVELOPMENT:
+    label: "Развитие"
+    products: [LUMP_SUM]
+    recommended: LUMP_SUM
+    explanation: "На развитие бизнеса подходит только кредит одной суммой: кредитная линия выдаётся лишь на пополнение оборотных средств."
+  REFINANCING:
+    label: "Рефинансирование"
+    products: [LUMP_SUM]
+    recommended: LUMP_SUM
+    explanation: "Рефинансирование закрывает текущий долг одной выдачей, кредитная линия для этого не подходит."
+  REGULAR_PURCHASES:
+    label: "Регулярные закупки"
+    products: [LUMP_SUM, REVOLVING_LINE]
+    recommended: REVOLVING_LINE
+    explanation: "Для регулярных закупок удобна кредитная линия: деньги берутся траншами по мере надобности, а погашенное снова доступно."
+  SEASONAL_GAP:
+    label: "Сезонный кассовый разрыв"
+    products: [LUMP_SUM, REVOLVING_LINE]
+    recommended: REVOLVING_LINE
+    explanation: "Сезонный разрыв удобно закрывать траншами кредитной линии и гасить из выручки в сезон, проценты платятся только за взятые деньги."
+
+products:
+  LUMP_SUM:
+    name: "Кредит одной суммой"
+    class: LumpSumLoan
+    variants:
+      UNSECURED: {amount_min: 300000, amount_max: 30000000,  term_min: 12, term_max: 60,  rate_min: 23.5, rate_max: 29.5, revenue_limit_pct: 30}
+      SECURED:   {amount_min: 500000, amount_max: 150000000, term_min: 12, term_max: 120, rate_min: 21.5, rate_max: 27.5, revenue_limit_pct: 50, collateral_coverage_min_pct: 50}
+  REVOLVING_LINE:
+    name: "Возобновляемая кредитная линия"
+    class: RevolvingCreditLine
+    tranche_min: 50000
+    tranche_term_months: 6
+    variants:
+      UNSECURED: {amount_min: 300000, amount_max: 30000000, term_min: 18, term_max: 18, rate_min: 23.5, rate_max: 29.5, revenue_limit_pct: 30, auto_prolong: true}
+      SECURED:   {amount_min: 500000, amount_max: 60000000, term_min: 60, term_max: 60, rate_min: 23.0, rate_max: 29.0, revenue_limit_pct: 50, collateral_coverage_min_pct: 50, draw_stop_months_before_end: 6}
+
+industry_risk:   # первые две цифры ОКВЭД
+  low:    ["10", "13", "14", "15", "16", "17", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "62", "63", "86"]
+  medium: ["45", "46", "47", "55", "56", "95", "96"]
+  high:   ["41", "42", "43", "49", "79"]
+forbidden_okved: ["92", "11.01", "11.02", "11.03", "11.04"]
