@@ -1,7 +1,3 @@
-/**
- * Ориентировочный аннуитетный платёж для подсказки в анкете и на экране одобрения.
- * Решение и график считает бэкенд, здесь только оценка для клиента. Округляем до сотен, как в макетах.
- */
 export function annuityPayment(amount, ratePercent, months) {
   const p = Number(amount);
   const n = Number(months);

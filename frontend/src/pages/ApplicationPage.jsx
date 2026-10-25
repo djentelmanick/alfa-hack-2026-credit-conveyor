@@ -1,39 +1,44 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button, ButtonLink, Card, Disclosure, Field, FileUpload, FormError, History, KeyValue, Money, Note, StatementRow, StatusLine } from "../components/index.js";
-import { api, fieldErrors } from "../api/index.js";
+import { api, errorText, fieldErrors } from "../api/index.js";
 import { useToast } from "../layout/Shell.jsx";
 import { useIsMobile, useResource } from "../lib/hooks.js";
 import { formatDayMonth, formatDateTime, formatMoney, formatRate, formatTime } from "../lib/format.js";
 import { annuityPayment } from "../lib/payment.js";
-import { HISTORY_NAMES, productLine, productName, variantName } from "../lib/labels.js";
+import { HISTORY_NAMES, isCreditLine, productLine, productName, reasonLabel, shortId, variantName } from "../lib/labels.js";
 import { LoadError, PageSkeleton } from "./StatePages.jsx";
 
 export function historyItems(list = []) {
   return list.map((h) => ({
     time: formatDateTime(h.at),
-    event: `${HISTORY_NAMES[h.from_status] || h.from_status} → ${HISTORY_NAMES[h.to_status] || h.to_status}`,
-    actor: [h.actor?.name || "Система", h.reason].filter(Boolean).join(" · "),
+    event: h.from_status ? `${HISTORY_NAMES[h.from_status] || h.from_status} → ${HISTORY_NAMES[h.to_status] || h.to_status}` : HISTORY_NAMES[h.to_status] || h.to_status,
+    actor: [h.actor?.name || "Система", reasonLabel(h.reason)].filter(Boolean).join(" · "),
   }));
 }
 
-const fromAnalyst = (app) => app.status === "NEEDS_INFO" && app.info_request?.source === "ANALYST";
+const fromAnalyst = (app, history = []) => {
+  if (app.status !== "NEEDS_INFO") return false;
+  const last = [...history].reverse().find((h) => h.to_status === "NEEDS_INFO");
+  return last?.actor?.role === "ANALYST";
+};
 
-function caption(app, live) {
-  if (live?.step_label || app.step_label) return live?.step_label || app.step_label;
-  const until = app.decision?.expires_at ? ` Действует до ${formatDayMonth(app.decision.expires_at)}` : "";
+const expiresAt = (app) => app.decision?.expires_at || app.expires_at;
+
+function caption(app, history, step) {
+  if (app.status === "CHECKING" && step) return step;
+  const until = expiresAt(app) ? ` Действует до ${formatDayMonth(expiresAt(app))}` : "";
   switch (app.status) {
     case "APPROVED": return "Банк одобрил заявку." + until;
     case "COUNTER_OFFER": return "Банк предлагает другие условия." + until;
     case "MANUAL_REVIEW": return "Обычно в течение дня";
-    case "NEEDS_INFO": return fromAnalyst(app) ? "Специалисту не хватает данных" : "Банку не хватает данных";
+    case "NEEDS_INFO": return fromAnalyst(app, history) ? "Специалисту не хватает данных" : "Банку не хватает данных";
     default: return undefined;
   }
 }
 
 const offerLine = (o, app) => [o.product_code !== app.product_code && productName(o.product_code), variantName(o.variant), formatRate(o.rate), `${o.term_months} мес`].filter(Boolean).join(" · ");
 
-/** «Отказаться» без модалки: подтверждение прямо на месте. */
 function CancelLink({ label, onCancel }) {
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,7 +60,7 @@ function CounterOffer({ app, mobile, refresh }) {
   const accept = async (o) => {
     setBusy(o.id);
     setError(null);
-    try { await api.accept(app.id, o.id); await refresh(); } catch (err) { setError(err.message); } finally { setBusy(null); }
+    try { await api.accept(app.id, o.id); await refresh(); } catch (err) { setError(errorText(err)); } finally { setBusy(null); }
   };
   return (
     <section className="stack stack-6">
@@ -69,7 +74,7 @@ function CounterOffer({ app, mobile, refresh }) {
                 <p>{offerLine(o, app)}</p>
               </div>
               {o.variant === "SECURED" && app.variant !== "SECURED" && <p className="small muted">Нужно будет описать залог, заявку посмотрит специалист</p>}
-              {can("accept") && (
+              {can("ACCEPT") && (
                 <div className="push-down">
                   <Button variant={i === 0 ? "primary" : "secondary"} block={mobile} loading={busy === o.id} onClick={() => accept(o)}>
                     {o.variant === "SECURED" && app.variant !== "SECURED" ? "Оформить с залогом" : `Взять ${formatMoney(o.amount)}`}
@@ -81,8 +86,8 @@ function CounterOffer({ app, mobile, refresh }) {
         ))}
       </div>
       <div className={mobile ? "stack stack-2 start" : "row row-6 row--baseline"}>
-        {app.decision?.expires_at && <p>Предложение действует до {formatDayMonth(app.decision.expires_at)}</p>}
-        {can("cancel") && <CancelLink label="Отказаться" onCancel={async () => { await api.cancel(app.id); await refresh(); }} />}
+        {expiresAt(app) && <p>Предложение действует до {formatDayMonth(expiresAt(app))}</p>}
+        {can("CANCEL") && <CancelLink label="Отказаться" onCancel={async () => { await api.cancel(app.id); await refresh(); }} />}
       </div>
       <FormError>{error}</FormError>
     </section>
@@ -94,14 +99,14 @@ function Approved({ app, refresh }) {
   const [error, setError] = useState(null);
   const [expired, setExpired] = useState(false);
   const o = app.decision?.offers?.[0] || { amount: app.amount, rate: app.decision?.rate, term_months: app.term_months };
-  const line = app.product_code === "CREDIT_LINE";
+  const line = isCreditLine(app.product_code);
   const can = (a) => app.allowed_actions?.includes(a);
   const accept = async () => {
     setBusy(true);
     setError(null);
     try { await api.accept(app.id, o.id); await refresh(); } catch (err) {
       if (err.status === 410) setExpired(true);
-      else setError(err.message);
+      else setError(errorText(err));
     } finally { setBusy(false); }
   };
   return (
@@ -112,13 +117,13 @@ function Approved({ app, refresh }) {
           <div className="stack stack-1">
             <Money value={o.amount} size="money" />
             <p>{formatRate(o.rate)} · {o.term_months} мес{line ? "" : ` · платёж ${formatMoney(annuityPayment(o.amount, o.rate, o.term_months))} в месяц`}</p>
-            {app.decision?.expires_at && <p className="muted">Действует до {formatDayMonth(app.decision.expires_at)}</p>}
+            {expiresAt(app) && <p className="muted">Действует до {formatDayMonth(expiresAt(app))}</p>}
           </div>
           <div className="row row-6">
-            {can("accept") && <Button disabled={expired} loading={busy} onClick={accept}>Перейти к подписанию</Button>}
-            {can("cancel") && <CancelLink label="Отказаться от кредита" onCancel={async () => { await api.cancel(app.id); await refresh(); }} />}
+            {can("ACCEPT") && <Button disabled={expired} loading={busy} onClick={accept}>Перейти к подписанию</Button>}
+            {can("CANCEL") && <CancelLink label="Отказаться от кредита" onCancel={async () => { await api.cancel(app.id); await refresh(); }} />}
           </div>
-          {expired && <FormError>Срок предложения истёк {formatDayMonth(app.decision?.expires_at)}. Подайте новую заявку</FormError>}
+          {expired && <FormError>Срок предложения истёк {formatDayMonth(expiresAt(app))}. Подайте новую заявку</FormError>}
           <FormError>{error}</FormError>
         </div>
       </Card>
@@ -128,8 +133,8 @@ function Approved({ app, refresh }) {
 
 function NeedsInfo({ app, refresh }) {
   const items = app.info_request?.items || [];
-  const wantsStatement = items.some((i) => i.code === "STATEMENT");
-  const wantsCollateral = items.some((i) => i.code === "COLLATERAL");
+  const wantsStatement = items.some((i) => i.code.includes("STATEMENT"));
+  const wantsCollateral = items.some((i) => i.code.includes("COLLATERAL"));
   const [statements, setStatements] = useState(app.statements || []);
   const [collateral, setCollateral] = useState({ type: app.collateral?.type || "", description: app.collateral?.description || "", estimated_value: String(app.collateral?.estimated_value || "") });
   const [uploading, setUploading] = useState(false);
@@ -142,7 +147,7 @@ function NeedsInfo({ app, refresh }) {
   const upload = async (file) => {
     setUploading(true);
     setUploadError(null);
-    try { const s = await api.uploadStatement(app.id, file); setStatements((l) => [...l, s]); } catch (err) { setUploadError(err.message); } finally { setUploading(false); }
+    try { const s = await api.uploadStatement(app.id, file); setStatements((l) => [...l, s]); } catch (err) { setUploadError(errorText(err)); } finally { setUploading(false); }
   };
   const send = async () => {
     setBusy(true);
@@ -159,9 +164,10 @@ function NeedsInfo({ app, refresh }) {
 
   return (
     <section className="stack stack-6">
-      <h2 className="display">{app.info_request?.title || "Банку не хватает данных"}</h2>
+      <h2 className="display">Банку не хватает данных</h2>
       <Card>
         <div className="stack stack-6">
+          {app.info_request?.message && <p className="measure">{app.info_request.message}</p>}
           {items.map((i, k) => <Note key={k}><p>{i.message}</p></Note>)}
           {wantsStatement && (
             <>
@@ -233,13 +239,13 @@ function Signing({ app, refresh }) {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const asked = useRef(false);
-  const line = app.product_code === "CREDIT_LINE";
+  const line = isCreditLine(app.product_code);
   const rate = app.decision?.rate;
 
   const getCode = async () => {
     setError(null);
     setValue("");
-    try { setCode(await api.signingCode(app.id)); } catch (err) { setError(err.message); }
+    try { setCode(await api.signingCode(app.id)); } catch (err) { setError(errorText(err)); }
   };
   useEffect(() => {
     if (asked.current) return;
@@ -255,7 +261,7 @@ function Signing({ app, refresh }) {
       toast("Договор подписан");
       await refresh();
     } catch (err) {
-      setError(err.status === 400 ? "Код неверный или устарел" : err.message);
+      setError(err.status === 400 ? "Код неверный или устарел" : errorText(err));
     } finally { setBusy(false); }
   };
 
@@ -304,33 +310,35 @@ export function ApplicationPage() {
   const { id } = useParams();
   const mobile = useIsMobile();
   const res = useResource(() => Promise.all([api.application(id), api.history(id)]), [id]);
-  const [live, setLive] = useState(null);
+  const status = res.data?.[0]?.status;
+  const moving = ["SUBMITTED", "CHECKING", "SCORING", "MANUAL_REVIEW"].includes(status);
+  const [step, setStep] = useState(null);
 
   useEffect(() => {
-    setLive(null);
+    if (!moving) return;
     return api.subscribeStatus(id, (msg) => {
-      setLive(msg);
-      res.reload({ silent: true });
+      if (msg.type === "application.step") setStep(msg.label);
+      else res.reload({ silent: true });
     });
-  }, [id]);
+  }, [id, moving]);
 
   if (res.loading && !res.data) return <PageSkeleton />;
   if (res.error && !res.data) return <LoadError error={res.error} />;
   const [app, history] = res.data;
   const refresh = () => res.reload({ silent: true });
-  const status = app.status;
-  const reasons = app.decision?.reasons?.length ? app.decision.reasons : null;
-  const showWhy = reasons && ["COUNTER_OFFER", "MANUAL_REVIEW", "REJECTED", "APPROVED"].includes(status);
+  const reasons = app.decision?.reasons || [];
+  const factors = app.decision?.key_factors || [];
+  const showWhy = (reasons.length > 0 || factors.length > 0) && ["COUNTER_OFFER", "MANUAL_REVIEW", "REJECTED", "APPROVED"].includes(status);
 
   const head = (
     <div className="stack stack-1">
-      <h1 className="h1">Заявка №{app.id}</h1>
+      <h1 className="h1">Заявка №{shortId(app.id)}</h1>
       <p className="muted">{productLine(app, { term: status !== "REJECTED" })}</p>
     </div>
   );
   const line = status !== "DRAFT" && status !== "CANCELLED" && (
     <Card>
-      <StatusLine status={status} caption={["SIGNING", "ISSUED"].includes(status) ? null : caption(app, live)} orientation={mobile ? "vertical" : "horizontal"} at={fromAnalyst(app) ? 2 : undefined} />
+      <StatusLine status={status} caption={["SIGNING", "ISSUED"].includes(status) ? null : caption(app, history, step)} orientation={mobile ? "vertical" : "horizontal"} at={fromAnalyst(app, history) ? 2 : undefined} />
     </Card>
   );
 
@@ -341,7 +349,7 @@ export function ApplicationPage() {
         {head}
         {line}
         <div className="stack stack-6 start">
-          <h2 className="display">{app.product_code === "CREDIT_LINE" ? "Лимит открыт" : "Деньги зачислены на счёт"}</h2>
+          <h2 className="display">{isCreditLine(app.product_code) ? "Лимит открыт" : "Деньги зачислены на счёт"}</h2>
           {app.contract_id && <ButtonLink variant="primary" to={`/contracts/${app.contract_id}`}>Открыть договор</ButtonLink>}
         </div>
       </main>
@@ -366,7 +374,14 @@ export function ApplicationPage() {
         <Card>
           <div className="stack stack-2">
             <h2 className="h2">Почему так решили</h2>
-            <ul className="list-plain list-lined">{reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
+            {reasons.length > 0 && <ul className="list-plain list-lined">{reasons.map((r, i) => <li key={i}>{reasonLabel(r)}</li>)}</ul>}
+            {factors.length > 0 && (
+              <ul className="list-plain list-lined">
+                {factors.map((k, i) => (
+                  <li key={i} className="row row-4 row--between"><span>{k.label}</span><span className="num">{k.points > 0 ? `+${k.points}` : String(k.points).replace("-", "−")}</span></li>
+                ))}
+              </ul>
+            )}
           </div>
         </Card>
       )}

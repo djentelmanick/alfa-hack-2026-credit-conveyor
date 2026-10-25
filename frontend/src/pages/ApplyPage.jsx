@@ -1,41 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Card, Checkbox, Field, FileUpload, FormError, Icon, Money, Note, RadioCard, RadioRow, StatementRow, StepsHeader } from "../components/index.js";
-import { api, fieldErrors } from "../api/index.js";
+import { api, errorText, fieldErrors } from "../api/index.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useResource } from "../lib/hooks.js";
 import { formatDateNumeric, formatMoney, formatRate } from "../lib/format.js";
 import { annuityPayment } from "../lib/payment.js";
-import { CONSENT_LABELS, isSoleTrader, productName, variantName } from "../lib/labels.js";
+import { CONSENT_LABELS, isSoleTrader, productName, shortId, variantName } from "../lib/labels.js";
 import { PageSkeleton } from "./StatePages.jsx";
 
 const STEP_TITLES = ["Цель", "Условия", "Выручка", "Согласия и отправка"];
-const STEP2_FIELDS = ["amount", "term_months", "variant", "collateral.type", "collateral.description", "collateral.estimated_value", "inn"];
+const STEP2_FIELDS = ["amount", "term_months", "variant", "product_code", "collateral", "collateral.type", "collateral.description", "collateral.estimated_value", "owner_guarantee_consent", "inn"];
 const innError = (inn) => (/^(\d{10}|\d{12})$/.test(inn) ? null : "Укажите 10 цифр для компании или 12 — для ИП");
+
+const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function toBody(f) {
   return {
-    inn: f.inn,
     purpose: f.purpose,
     product_code: f.product_code,
     variant: f.variant,
     amount: Number(f.amount) || 0,
     term_months: Number(f.term_months) || 0,
     owner_guarantee_consent: !isSoleTrader(f.inn) && f.variant === "UNSECURED" ? !!f.owner_guarantee_consent : false,
-    has_account: f.has_account,
     collateral: f.variant === "SECURED" ? { type: f.collateral.type, description: f.collateral.description, estimated_value: Number(f.collateral.estimated_value) || 0 } : null,
   };
 }
 
 export function ApplyPage() {
-  const { user, company } = useAuth();
+  const { user, company, selectCompany } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const editId = params.get("id");
 
   const dicts = useResource(() => Promise.all([api.purposes(), api.products(), api.collateralTypes(), editId ? api.application(editId) : null]), [editId]);
   const [step, setStep] = useState(1);
-  const [appId, setAppId] = useState(editId ? Number(editId) : null);
+  const [appId, setAppId] = useState(editId || null);
   const [f, setF] = useState(null);
   const [statements, setStatements] = useState([]);
   const [errors, setErrors] = useState({});
@@ -46,7 +46,7 @@ export function ApplyPage() {
     if (!dicts.data || f) return;
     const [, , , app] = dicts.data;
     if (app) {
-      setF({ ...app, amount: String(app.amount || ""), term_months: String(app.term_months || ""), collateral: app.collateral || { type: "", description: "", estimated_value: "" } });
+      setF({ ...app, has_account: !(app.statements || []).length, amount: String(app.amount || ""), term_months: String(app.term_months || ""), collateral: app.collateral || { type: "", description: "", estimated_value: "" } });
       setStatements(app.statements || []);
       return;
     }
@@ -58,7 +58,7 @@ export function ApplyPage() {
       amount: "",
       term_months: "",
       owner_guarantee_consent: true,
-      has_account: company?.has_account ?? true,
+      has_account: true,
       collateral: { type: "", description: "", estimated_value: "" },
     });
   }, [dicts.data]);
@@ -71,8 +71,9 @@ export function ApplyPage() {
   async function save() {
     const body = toBody(f);
     if (appId) return api.updateApplication(appId, body);
-    const app = await api.createApplication(body);
+    const app = await api.createApplication({ inn: f.inn, ...body });
     setAppId(app.id);
+    if (!user.companies?.some((c) => c.inn === f.inn)) selectCompany(f.inn);
     return app;
   }
 
@@ -86,7 +87,7 @@ export function ApplyPage() {
       setErrors(mine);
       if (!Object.keys(mine).length) go(next);
     } catch (err) {
-      if (err.status === 409) setDuplicate({ message: err.message, id: err.data.application_id });
+      if (err.status === 409) setDuplicate({ message: err.message, id: err.data?.error?.application_id || err.data?.application_id });
       else setErrors({ ...fieldErrors(err), form: err.status === 422 ? null : err.message });
     } finally {
       setBusy(false);
@@ -94,6 +95,7 @@ export function ApplyPage() {
   }
 
   const props = { f, set, errors, setErrors, busy, purposes, products, collateralTypes, go, appId, statements, setStatements, user, duplicate };
+
   return (
     <main className="page">
       <StepsHeader step={step} title={STEP_TITLES[step - 1]} />
@@ -105,22 +107,35 @@ export function ApplyPage() {
   );
 }
 
-function StepGoal({ f, set, errors, setErrors, purposes, products, go }) {
+function StepGoal({ f, set, errors, setErrors, purposes, products, go, appId }) {
   const rec = useResource(() => (f.purpose ? api.recommendation(f.purpose) : null), [f.purpose]);
   const allowed = rec.data?.allowed || products.map((p) => p.code);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     if (rec.data && !rec.data.allowed.includes(f.product_code)) set({ product_code: rec.data.recommended });
   }, [rec.data]);
 
-  const next = () => {
+  const next = async () => {
     const e = {};
     const inn = innError(f.inn);
     if (inn) e.inn = inn;
     if (!f.purpose) e.purpose = "Выберите, на что нужны деньги";
     if (!f.product_code) e.product = "Выберите продукт";
     setErrors(e);
-    if (!Object.keys(e).length) go(2);
+    if (Object.keys(e).length) return;
+    if (appId) { go(2); return; }
+    setChecking(true);
+    try {
+      const company = await api.company(f.inn);
+      if (!company.can_apply) { setErrors({ inn: company.cannot_apply_reason || "По этой компании подать заявку нельзя" }); return; }
+      if (company.has_account != null) set({ has_account: company.has_account });
+      go(2);
+    } catch (err) {
+      setErrors({ inn: err.status === 404 ? "Компании с таким ИНН нет в ЕГРЮЛ и ЕГРИП" : errorText(err) });
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -130,7 +145,7 @@ function StepGoal({ f, set, errors, setErrors, purposes, products, go }) {
           <div className="stack stack-4">
             <h2 className="h2">Компания</h2>
             <div style={{ maxWidth: 320 }}>
-              <Field label="ИНН компании или ИП" variant="inn" value={f.inn} onChange={(v) => set({ inn: v })} hint="10 цифр для компании, 12 — для ИП" error={errors.inn} />
+              <Field label="ИНН компании или ИП" variant="inn" value={f.inn} onChange={(v) => set({ inn: v })} hint="10 цифр для компании, 12 — для ИП" error={errors.inn} inputProps={{ readOnly: !!appId }} />
             </div>
           </div>
         </Card>
@@ -166,7 +181,7 @@ function StepGoal({ f, set, errors, setErrors, purposes, products, go }) {
             </div>
           </Card>
         )}
-        <div><Button onClick={next}>Продолжить</Button></div>
+        <div><Button onClick={next} loading={checking}>Продолжить</Button></div>
       </div>
     </div>
   );
@@ -176,7 +191,7 @@ const range = (v) => `${formatMoney(v.amount_min)} – ${formatMoney(v.amount_ma
 
 function StepTerms({ f, set, errors, busy, products, collateralTypes, onNext, duplicate }) {
   const product = products.find((p) => p.code === f.product_code) || products[0];
-  const variant = product.variants.find((v) => v.code === f.variant) || product.variants[0];
+  const variant = product.variants.find((v) => v.variant === f.variant) || product.variants[0];
   const payment = annuityPayment(f.amount, variant.rate_min, f.term_months);
   const company = !isSoleTrader(f.inn);
   const setCollateral = (patch) => set({ collateral: { ...f.collateral, ...patch } });
@@ -186,7 +201,7 @@ function StepTerms({ f, set, errors, busy, products, collateralTypes, onNext, du
       <div className="stack stack-6">
         <div role="radiogroup" aria-label="Вариант" className="radio-cards">
           {product.variants.map((v) => (
-            <RadioCard key={v.code} checked={variant.code === v.code} onSelect={() => set({ variant: v.code })} title={v.name}>
+            <RadioCard key={v.variant} checked={variant.variant === v.variant} onSelect={() => set({ variant: v.variant })} title={capitalize(variantName(v.variant))}>
               <span className="num">{range(v)}</span>
               <span className="small muted">{v.term_min}–{v.term_max} мес · ставка от {formatRate(v.rate_min)}</span>
             </RadioCard>
@@ -198,13 +213,13 @@ function StepTerms({ f, set, errors, busy, products, collateralTypes, onNext, du
               <Field label="Сумма" variant="money" value={f.amount} onChange={(v) => set({ amount: v })} hint={`От ${formatMoney(variant.amount_min)} до ${formatMoney(variant.amount_max)}`} error={errors.amount} />
               <Field label="Срок, мес" variant="term" value={f.term_months} onChange={(v) => set({ term_months: v })} hint={`От ${variant.term_min} до ${variant.term_max}`} error={errors.term_months} />
             </div>
-            {company && variant.code === "UNSECURED" && (
+            {company && variant.variant === "UNSECURED" && (
               <Checkbox label="Собственник согласен стать поручителем по кредиту" checked={!!f.owner_guarantee_consent} onChange={(v) => set({ owner_guarantee_consent: v })} />
             )}
-            {variant.collateral_required && (
+            {variant.variant === "SECURED" && (
               <div className="stack stack-4 divider-top" style={{ paddingTop: 16 }}>
                 <span className="body-strong">Залог</span>
-                <Field label="Тип залога" variant="select" options={collateralTypes.map((c) => ({ value: c.code, label: c.label }))} value={f.collateral.type} onChange={(v) => setCollateral({ type: v })} error={errors["collateral.type"]} />
+                <Field label="Тип залога" variant="select" options={collateralTypes.map((c) => ({ value: c.code, label: c.label }))} value={f.collateral.type} onChange={(v) => setCollateral({ type: v })} error={errors["collateral.type"] || errors.collateral} />
                 <Field label="Описание" value={f.collateral.description} onChange={(v) => setCollateral({ description: v })} error={errors["collateral.description"]} />
                 <div style={{ maxWidth: 360 }}>
                   <Field label="Оценочная стоимость" variant="money" value={f.collateral.estimated_value} onChange={(v) => setCollateral({ estimated_value: v })} error={errors["collateral.estimated_value"]} />
@@ -215,11 +230,11 @@ function StepTerms({ f, set, errors, busy, products, collateralTypes, onNext, du
         </Card>
         <div className="stack stack-4 start">
           <Button onClick={onNext} loading={busy}>Продолжить</Button>
-          <FormError>{errors.form}</FormError>
+          <FormError>{errors.form || errors.inn || errors.product_code || errors.owner_guarantee_consent}</FormError>
           {duplicate && (
             <Note>
               <p>{duplicate.message}</p>
-              {duplicate.id && <Link to={`/applications/${duplicate.id}`}>Открыть заявку №{duplicate.id}</Link>}
+              {duplicate.id && <Link to={`/applications/${duplicate.id}`}>Открыть заявку №{shortId(duplicate.id)}</Link>}
             </Note>
           )}
         </div>
@@ -247,7 +262,7 @@ function StepRevenue({ f, set, errors, busy, appId, statements, setStatements, o
       const s = await api.uploadStatement(appId, file);
       setStatements((list) => [...list, s]);
     } catch (err) {
-      setUploadError(err.message);
+      setUploadError(errorText(err));
     } finally {
       setUploading(false);
     }
@@ -290,6 +305,7 @@ function StepRevenue({ f, set, errors, busy, appId, statements, setStatements, o
 }
 
 function StepSubmit({ f, purposes, products, user, appId, go, onDone }) {
+  const { reloadMe } = useAuth();
   const consents = useResource(() => api.consents(f.inn), [f.inn]);
   const [checked, setChecked] = useState({});
   const [errors, setErrors] = useState({});
@@ -308,7 +324,10 @@ function StepSubmit({ f, purposes, products, user, appId, go, onDone }) {
     setBusy(true);
     setErrors({});
     try {
-      if (missing.length) await api.giveConsents(f.inn, missing);
+      if (missing.length) {
+        await api.giveConsents(f.inn, missing);
+        if (!user.companies?.some((c) => c.inn === f.inn)) reloadMe();
+      }
       await api.submitApplication(appId);
       onDone(appId);
     } catch (err) {
@@ -357,7 +376,7 @@ function StepSubmit({ f, purposes, products, user, appId, go, onDone }) {
             {given.filter((g) => required.includes(g.type)).map((g) => (
               <div key={g.type} className="note">
                 <Icon name="circle-check" style={{ color: "var(--success)" }} />
-                <div className="stack"><span>{CONSENT_LABELS[g.type]}</span><span className="small muted">Дано {formatDateNumeric(g.given_at)}, {g.given_by}</span></div>
+                <div className="stack"><span>{CONSENT_LABELS[g.type]}</span><span className="small muted">Дано {formatDateNumeric(g.given_at)}{g.given_by === user.id ? ", вами" : ""}</span></div>
               </div>
             ))}
             {missing.map((t) => (

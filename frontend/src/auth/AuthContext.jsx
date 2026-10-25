@@ -15,9 +15,11 @@ export function AuthProvider({ children }) {
       const me = await api.me();
       setUser(me);
       return me;
-    } catch {
-      tokenStore.set(null);
-      setUser(null);
+    } catch (err) {
+      if (err.status === 401 || err.status === 403) {
+        tokenStore.set(null);
+        setUser(null);
+      }
       return null;
     }
   }, []);
@@ -46,7 +48,7 @@ export function AuthProvider({ children }) {
 
   const selectCompany = useCallback((inn) => {
     setCompanyInn(inn);
-    try { localStorage.setItem(COMPANY_KEY, inn); } catch { /* приватный режим */ }
+    try { localStorage.setItem(COMPANY_KEY, inn); } catch {  }
   }, []);
 
   const company = useMemo(() => {

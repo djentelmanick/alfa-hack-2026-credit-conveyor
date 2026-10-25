@@ -7,7 +7,6 @@ import { useIsMobile } from "../lib/hooks.js";
 import { firstName } from "../lib/format.js";
 
 const ToastContext = createContext(() => {});
-/** Тост — только после подписания договора и решения аналитика. */
 export const useToast = () => useContext(ToastContext);
 
 function Frame({ header, children }) {

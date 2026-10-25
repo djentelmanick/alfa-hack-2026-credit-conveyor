@@ -42,10 +42,6 @@ function Menu({ button, items, className = "", buttonClass = "ck-menu__btn" }) {
   );
 }
 
-/**
- * Шапка кабинета. Название компании — текстом, логотипа нет.
- * Если у пользователя несколько компаний, название становится выбором компании.
- */
 export function AppHeader({ title, homeTo = "/", links = [], userName, menuItems = [], companies }) {
   return (
     <header className="ck-header">

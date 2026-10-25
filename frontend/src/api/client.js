@@ -1,30 +1,35 @@
-export const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
+export const API_URL = (import.meta.env.VITE_API_URL || "/api/v1").replace(/\/$/, "");
 export const WS_URL = (import.meta.env.VITE_WS_URL || "").replace(/\/$/, "");
 
 const TOKEN_KEY = "ck.token";
 
 export const tokenStore = {
   get: () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } },
-  set: (t) => { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch { /* приватный режим */ } },
+  set: (t) => { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch {  } },
 };
 
-/** Ошибка ответа API. status — HTTP-код, data — тело ответа (detail, errors[]). */
 export class ApiError extends Error {
   constructor(status, data) {
-    super((data && (data.message || (typeof data.detail === "string" && data.detail))) || `HTTP ${status}`);
+    const body = (data && data.error) || data || {};
+    super(body.message || (typeof body.detail === "string" && body.detail) || `HTTP ${status}`);
     this.status = status;
+    this.code = body.code || null;
+    this.details = Array.isArray(body.details) ? body.details : [];
     this.data = data || {};
   }
 }
 
-/** Ошибки полей из ответа 422: [{field, message}] → {field: message}. */
 export function fieldErrors(err) {
-  const list = err?.data?.errors || err?.data?.detail;
+  const list = err?.details?.length ? err.details : err?.data?.detail;
   if (!Array.isArray(list)) return {};
-  return Object.fromEntries(list.map((e) => [e.field || (Array.isArray(e.loc) ? e.loc.slice(1).join(".") : ""), e.message || e.msg]));
+  const key = (e) => String(e.field || (Array.isArray(e.loc) ? e.loc.slice(1).join(".") : "")).replace(/^body\./, "").replace(/\.(\d+)(?=\.|$)/g, "[$1]");
+  return Object.fromEntries(list.map((e) => [key(e), e.message || e.msg]));
 }
 
-// Полоса «Нет связи» и кнопка «Повторить» живут вне страниц, поэтому связь через простые подписки.
+export function errorText(err) {
+  return err?.details?.[0]?.message || err?.message || "Не получилось";
+}
+
 const netListeners = new Set();
 const retryListeners = new Set();
 export const onNetworkChange = (fn) => { netListeners.add(fn); return () => netListeners.delete(fn); };
@@ -59,6 +64,7 @@ export async function request(method, path, { body, query, form } = {}) {
   try { data = text ? JSON.parse(text) : null; } catch { data = { message: text }; }
   if (res.status >= 500) setNetworkDown(true);
   if (res.status === 401 && path !== "/auth/login") onUnauthorized();
+  if (res.status === 204) return null;
   if (!res.ok) throw new ApiError(res.status, data);
   return data;
 }
@@ -66,19 +72,17 @@ export async function request(method, path, { body, query, form } = {}) {
 export const http = {
   get: (p, query) => request("GET", p, { query }),
   post: (p, body) => request("POST", p, { body }),
-  patch: (p, body) => request("PATCH", p, { body }),
-  del: (p) => request("DELETE", p),
-  upload: (p, file, field = "file") => {
+  upload: (p, file, fields = {}) => {
     const form = new FormData();
-    form.append(field, file);
+    Object.entries(fields).forEach(([k, v]) => form.append(k, v));
+    form.append("file", file);
     return request("POST", p, { form });
   },
 };
 
-/** Адрес вебсокета: VITE_WS_URL или тот же хост, что и API. */
 export function wsUrl(path) {
-  if (WS_URL) return WS_URL + path;
   const base = new URL(API_URL, window.location.origin);
+  if (WS_URL) return WS_URL + base.pathname.replace(/\/$/, "") + path;
   base.protocol = base.protocol === "https:" ? "wss:" : "ws:";
   return base.toString().replace(/\/$/, "") + path;
 }

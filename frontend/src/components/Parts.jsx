@@ -2,7 +2,6 @@ import { Icon } from "./Icon.jsx";
 import { Button } from "./Button.jsx";
 import { formatPeriod, plural } from "../lib/format.js";
 
-/** Строка-радио в списке (цель, продукт). */
 export function RadioRow({ checked, disabled, onSelect, children, note }) {
   return (
     <button
@@ -23,7 +22,6 @@ export function RadioRow({ checked, disabled, onSelect, children, note }) {
   );
 }
 
-/** Крупный выбор карточкой: вариант продукта, где ведёте бизнес. */
 export function RadioCard({ checked, onSelect, dot = false, title, children }) {
   return (
     <button type="button" role="radio" aria-checked={!!checked} className="radio-card" onClick={onSelect}>
@@ -47,7 +45,6 @@ export function StepsHeader({ step, total = 4, title }) {
   );
 }
 
-/** Сообщение «нужно ваше действие» с янтарной иконкой. */
 export function Note({ children }) {
   return (
     <div className="note note--attention">

@@ -4,7 +4,6 @@ import { Icon } from "./Icon.jsx";
 const group = (d) => d.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 const LIMIT = { inn: 12, term: 3, money: 15 };
 
-/** Поле ввода: текст, ИНН, сумма, срок или select. Значение суммы хранится без пробелов. */
 export function Field({ label, hint, error, variant = "text", value, defaultValue = "", onChange, options = [], placeholder, disabled = false, id, name, inputProps = {}, className = "" }) {
   const [inner, setInner] = useState(String(defaultValue ?? ""));
   const autoId = useId();

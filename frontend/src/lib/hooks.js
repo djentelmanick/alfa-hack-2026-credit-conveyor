@@ -13,13 +13,8 @@ export function useMedia(query) {
   return match;
 }
 
-/** Ширина ≤ 640px — мобильная раскладка из макетов 360 × 800. */
 export const useIsMobile = () => useMedia("(max-width: 640px)");
 
-/**
- * Загрузка данных со страницы. Перезапрашивает по кнопке «Повторить» в полосе «Нет связи».
- * reload({ silent: true }) обновляет данные без скелетона.
- */
 export function useResource(fn, deps = []) {
   const [state, setState] = useState({ data: undefined, error: null, loading: true });
   const seq = useRef(0);

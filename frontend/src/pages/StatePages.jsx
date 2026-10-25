@@ -8,7 +8,6 @@ export function NotFoundPage({ home = "/" }) {
   );
 }
 
-/** Ошибка загрузки страницы: 403 — чужая заявка или договор, 404 — нет такой, остальное — текст ответа. */
 export function LoadError({ error, home = "/" }) {
   const title = error?.status === 403 ? error.message || "Эта заявка принадлежит другой компании" : error?.status === 404 ? "Такой страницы нет" : error?.status === 0 ? "Нет связи с сервером" : error?.message || "Не удалось загрузить страницу";
   return (
@@ -18,7 +17,6 @@ export function LoadError({ error, home = "/" }) {
   );
 }
 
-/** Скелетон страницы заявки: заголовок, линия статусов, блок решения. */
 export function PageSkeleton() {
   return (
     <main className="page" aria-busy="true" aria-label="Загрузка">

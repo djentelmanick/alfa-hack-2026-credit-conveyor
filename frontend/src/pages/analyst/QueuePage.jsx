@@ -4,7 +4,7 @@ import { Button, Card, DataTable, EmptyState, Field, Skeleton, StatusBadge, Tabs
 import { api } from "../../api/index.js";
 import { useResource } from "../../lib/hooks.js";
 import { formatDateTime, formatMoney } from "../../lib/format.js";
-import { RISK_LABELS, productName, variantName } from "../../lib/labels.js";
+import { RISK_LABELS, productName, reasonLabel, shortId, variantName } from "../../lib/labels.js";
 
 const SIZE = 20;
 const STATUS_OPTIONS = ["SUBMITTED", "CHECKING", "NEEDS_INFO", "SCORING", "MANUAL_REVIEW", "APPROVED", "COUNTER_OFFER", "REJECTED", "SIGNING", "ISSUED", "CANCELLED"].map((s) => ({ value: s, label: statusMeta[s].label }));
@@ -13,13 +13,13 @@ const RISK_OPTIONS = Object.entries(RISK_LABELS).map(([value, label]) => ({ valu
 const two = (a, b) => <span className="two-line"><span>{a}</span><span>{b}</span></span>;
 
 const cols = [
-  { key: "num", title: "Номер", width: 72, render: (r) => `№${r.id}` },
+  { key: "num", title: "Номер", width: 104, render: (r) => `№${shortId(r.id)}` },
   { key: "company", title: "Компания и ИНН", render: (r) => two(r.company_name, r.inn) },
   { key: "product", title: "Продукт и вариант", render: (r) => two(productName(r.product_code), variantName(r.variant)) },
   { key: "amount", title: "Сумма", numeric: true, render: (r) => formatMoney(r.amount) },
   { key: "status", title: "Статус", render: (r) => <StatusBadge status={r.status} /> },
   { key: "risk", title: "Риск", width: 56, render: (r) => r.risk_class || "—" },
-  { key: "reasons", title: "Причины", render: (r) => <span className="stack">{(r.manual_reasons || []).map((t) => <span key={t} className="small" style={{ whiteSpace: "nowrap" }}>{t}</span>)}</span> },
+  { key: "reasons", title: "Причины", render: (r) => <span className="stack">{(r.manual_reasons || []).map((t) => <span key={t} className="small">{reasonLabel(t)}</span>)}</span> },
   { key: "at", title: "Подана", render: (r) => <span style={{ whiteSpace: "nowrap" }}>{formatDateTime(r.submitted_at)}</span> },
 ];
 

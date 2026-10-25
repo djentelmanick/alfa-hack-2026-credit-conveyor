@@ -1,6 +1,3 @@
-// Скриншоты страниц на 1440 и 360 через headless Chrome или Edge, без лишних зависимостей.
-// npm run shots -- login [ещё маршруты…]
-// Нужен запущенный dev-сервер (npm run dev) и бэкенд. Каждый снимок — в чистом профиле, без входа.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -22,7 +19,6 @@ if (!browser) {
   process.exit(1);
 }
 
-// В Git Bash ведущий «/» превращается в путь Windows, поэтому маршрут можно писать и без него.
 const routes = process.argv.slice(2).map((r) => (r.startsWith("/") ? r : "/" + r));
 if (!routes.length) {
   console.error("Укажите маршрут: npm run shots -- login");
@@ -38,8 +34,6 @@ for (const route of routes) {
     const name = `${route.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_|_$/g, "") || "root"}-${w}.png`;
     const file = join(out, name);
     const profile = join(tmpdir(), `ck-shots-${process.pid}-${w}`);
-    // Headless Chrome не делает окно уже ~500px, поэтому узкую ширину снимаем через iframe нужного размера.
-    // Обёртку отдаёт сам dev-сервер: iframe того же источника живёт в том же процессе и его таймеры идут.
     let target = BASE + route;
     if (w < 500) {
       writeFileSync(join(out, "_frame.html"), `<!doctype html><style>html,body{margin:0}iframe{border:0;width:${w}px;height:${h}px;display:block}</style><iframe src="${route}"></iframe>`);

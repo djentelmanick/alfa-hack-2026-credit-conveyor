@@ -26,7 +26,6 @@ export function Button({ variant = "primary", compact = false, block = false, lo
   );
 }
 
-/** Ссылка, которая выглядит как кнопка. Внутренние адреса — через роутер. */
 export function ButtonLink({ variant = "secondary", compact = false, block = false, to = "/", className = "", children, ...rest }) {
   return (
     <Link to={to} className={cx("ck-btn", "ck-btn--" + variant, compact && "ck-btn--compact", block && "ck-btn--block", className)} {...rest}>

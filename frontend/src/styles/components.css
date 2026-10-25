@@ -1,11 +1,7 @@
-/* Компоненты «Кредитного кабинета». Только токены, без hex. Состояния .is-hover/.is-focus — для досок с образцами. */
-
-/* ---------- Icon ---------- */
 .ck-icon{flex:none;display:inline-block;vertical-align:middle}
 .ck-spin{animation:ck-spin .9s linear infinite}
 @keyframes ck-spin{to{transform:rotate(360deg)}}
 
-/* ---------- Button ---------- */
 .ck-btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);height:var(--control-height);padding:0 var(--space-6);border:1px solid transparent;border-radius:var(--radius-md);font:var(--text-body-strong);text-decoration:none;white-space:nowrap;cursor:pointer;transition:background-color var(--duration-fast),text-decoration-color var(--duration-fast);-webkit-tap-highlight-color:transparent}
 .ck-btn:focus-visible,.ck-btn.is-focus{outline:none;box-shadow:var(--focus-ring)}
 .ck-btn--compact{height:var(--control-height-compact);padding:0 var(--space-4)}
@@ -20,7 +16,6 @@
 .ck-btn--link:disabled,.ck-btn--link[aria-disabled="true"]{color:var(--ink-muted);cursor:not-allowed}
 .ck-btn[aria-busy="true"]{cursor:progress}
 
-/* ---------- Field ---------- */
 .ck-field{display:flex;flex-direction:column;gap:var(--space-2);min-width:0}
 .ck-field__label{font:var(--text-body);color:var(--ink)}
 .ck-field__control{position:relative;display:flex;align-items:center;height:var(--control-height);background:var(--surface-card);border:1px solid var(--line);border-radius:var(--radius-sm);transition:box-shadow var(--duration-fast)}
@@ -37,7 +32,6 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-field--disabled .ck-field__control{background:var(--surface-page)}
 .ck-field--disabled .ck-field__input{color:var(--ink-muted);cursor:not-allowed}
 
-/* ---------- Checkbox ---------- */
 .ck-check{display:grid;grid-template-columns:20px minmax(0,1fr);column-gap:var(--space-2);max-width:calc(70ch + 28px);position:relative}
 .ck-check__input{position:absolute;opacity:0;width:20px;height:20px;margin:2px 0 0;cursor:pointer}
 .ck-check__box{grid-column:1;grid-row:1;width:20px;height:20px;margin-top:2px;display:grid;place-items:center;border:1.5px solid var(--ink-muted);border-radius:4px;background:var(--surface-card);color:var(--ink-inverse);pointer-events:none;transition:background-color var(--duration-fast)}
@@ -53,13 +47,11 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-check__desc{font:var(--text-small);color:var(--ink-muted)}
 .ck-check__error{display:flex;gap:var(--space-1);font:var(--text-small);color:var(--danger)}
 
-/* ---------- Modal ---------- */
 .ck-modal-scrim{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:var(--space-4);background:var(--scrim)}
 .ck-modal{width:100%;max-width:640px;max-height:calc(100vh - 32px);overflow:auto;display:flex;flex-direction:column;gap:var(--space-4);padding:var(--space-6);background:var(--surface-card);border:1px solid var(--line);border-radius:var(--radius-lg)}
 .ck-modal__body{max-width:70ch;display:flex;flex-direction:column;gap:var(--space-2)}
 .ck-modal__foot{display:flex;justify-content:flex-end;padding-top:var(--space-2)}
 
-/* ---------- FileUpload ---------- */
 .ck-upload{display:flex;flex-direction:column;gap:var(--space-2)}
 .ck-upload__label{font:var(--text-body)}
 .ck-upload__hint{font:var(--text-small);color:var(--ink-muted)}
@@ -71,13 +63,11 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-checks .ck-icon{margin-top:2px}
 .ck-checks li.ck-checks__fail{color:var(--danger)}
 
-/* ---------- Card ---------- */
 .ck-card{background:var(--surface-card);border-radius:var(--radius-lg);padding:var(--space-6);min-width:0}
 .ck-card--raised{box-shadow:var(--shadow-raised)}
 .ck-card--offer{background:var(--red-tint)}
 .ck-card--flush{padding:0}
 
-/* ---------- StatusBadge ---------- */
 .ck-badge{display:inline-flex;align-items:center;gap:var(--space-1);padding:var(--space-1) var(--space-2);border-radius:var(--radius-sm);font:var(--weight-strong) 14px/20px var(--font-sans);white-space:nowrap;vertical-align:middle}
 .ck-badge--processing{background:var(--surface-page);color:var(--ink)}
 .ck-badge--waiting{background:var(--attention-tint);color:var(--attention-strong)}
@@ -86,13 +76,11 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-badge--success .ck-icon{color:var(--success)}
 .ck-badge--rejected,.ck-badge--draft,.ck-badge--cancelled{background:var(--surface-page);color:var(--ink-muted)}
 
-/* ---------- Money ---------- */
 .ck-money{font-variant-numeric:tabular-nums;white-space:nowrap}
 .ck-money--money{font:var(--text-money)}
 .ck-money--body-strong{font:var(--text-body-strong)}
 .ck-money--body{font:var(--text-body)}
 
-/* ---------- KeyValue ---------- */
 .ck-kv{display:flex;flex-direction:column;gap:var(--space-2)}
 .ck-kv__list{margin:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
 .ck-kv__list dt,.ck-kv__list dd{margin:0;padding:var(--space-2) 0;border-bottom:1px solid var(--line);font:var(--text-body);font-variant-numeric:tabular-nums}
@@ -105,7 +93,6 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-kv__list dt{border-bottom:0;padding-bottom:0}
 }
 
-/* ---------- DataTable ---------- */
 .ck-table{display:flex;flex-direction:column;gap:var(--space-2);min-width:0}
 .ck-table__caption{font:var(--text-body-strong)}
 .ck-table__scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -119,7 +106,6 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-table tr.is-link{cursor:pointer;transition:background-color var(--duration-fast)}
 .ck-table tr.is-link:hover{background:var(--surface-page)}
 
-/* ---------- Chip ---------- */
 .ck-chip{display:inline-flex;align-items:center;height:var(--control-height-compact);padding:0 var(--space-4);border:1px solid var(--line);border-radius:var(--radius-pill);background:var(--surface-card);color:var(--ink);font:var(--text-body);white-space:nowrap;cursor:pointer;transition:background-color var(--duration-fast)}
 .ck-chip:hover,.ck-chip.is-hover{background:var(--surface-page)}
 .ck-chip:focus-visible,.ck-chip.is-focus{outline:none;box-shadow:var(--focus-ring)}
@@ -127,7 +113,6 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-chip[aria-pressed="true"]:focus-visible{box-shadow:inset 0 0 0 1px var(--ink),var(--focus-ring)}
 .ck-chips{display:flex;flex-wrap:wrap;gap:var(--space-2)}
 
-/* ---------- Skeleton ---------- */
 .ck-skel{display:block;background:var(--line);border-radius:var(--radius-sm);animation:ck-pulse 1.6s ease-in-out infinite alternate}
 .ck-skel--text{height:16px}
 .ck-skel--control{height:var(--control-height)}
@@ -135,7 +120,6 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-skel-lines{display:flex;flex-direction:column;gap:var(--space-2)}
 @keyframes ck-pulse{from{opacity:1}to{opacity:.5}}
 
-/* ---------- StatusLine ---------- */
 .ck-sl{display:flex;flex-direction:column;gap:var(--space-4)}
 .ck-sl__track{list-style:none;margin:0;padding:0;display:flex}
 .ck-sl__st{display:flex;flex-direction:column;gap:var(--space-2);flex:1 1 0;min-width:0}
@@ -175,7 +159,6 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-sl--responsive .ck-sl__st:last-child .ck-sl__label{padding-bottom:0}
 }
 
-/* ---------- AppHeader ---------- */
 .ck-header{height:var(--header-height);background:var(--surface-card);border-bottom:1px solid var(--line)}
 .ck-header__inner{height:100%;max-width:calc(var(--content-max) + 2 * var(--page-gutter));margin:0 auto;padding:0 var(--page-gutter);display:flex;align-items:center;justify-content:space-between;gap:var(--space-4)}
 .ck-header__title{font:var(--text-body-strong);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;text-decoration:none}
@@ -193,7 +176,6 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-menu__item:hover{background:var(--surface-page)}
 @media (max-width:640px){.ck-header__nav{gap:var(--space-4)}.ck-header__hide-sm{display:none}}
 
-/* ---------- Stepper ---------- */
 .ck-stepper{display:flex;flex-direction:column;gap:var(--space-1)}
 .ck-stepper__count{font:var(--text-small);color:var(--ink-muted)}
 .ck-stepper__list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;column-gap:var(--space-2);font:var(--text-body)}
@@ -202,7 +184,6 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-stepper__list li[aria-current="step"]{font-weight:600}
 .ck-stepper__list li.is-future{color:var(--ink-muted)}
 
-/* ---------- ScoreFactors ---------- */
 .ck-score{display:flex;flex-direction:column;gap:var(--space-4)}
 .ck-score__total{font:var(--text-h2)}
 .ck-score__list{list-style:none;margin:0;padding:0}
@@ -217,7 +198,6 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-score__pts{grid-column:2;grid-row:1}
 }
 
-/* ---------- History ---------- */
 .ck-history{list-style:none;margin:0;padding:0}
 .ck-history__item{display:grid;grid-template-columns:136px minmax(0,1fr);gap:var(--space-1) var(--space-4);padding:var(--space-2) 0 var(--space-4)}
 .ck-history__time{font:var(--text-small);color:var(--ink-muted);font-variant-numeric:tabular-nums;padding-top:2px;white-space:nowrap}
@@ -227,12 +207,10 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-history__main .ck-quote{margin-top:var(--space-2)}
 @media (max-width:640px){.ck-history__item{grid-template-columns:minmax(0,1fr)}}
 
-/* ---------- AnalystComment ---------- */
 .ck-quote{margin:0;display:flex;flex-direction:column;gap:var(--space-1)}
 .ck-quote__text{margin:0;padding-left:var(--space-4);border-left:2px solid var(--line);font:var(--text-body);max-width:70ch}
 .ck-quote__by{font:var(--text-small);color:var(--ink-muted);padding-left:calc(var(--space-4) + 2px)}
 
-/* ---------- ApplicationRow ---------- */
 .ck-rows{list-style:none;margin:0;padding:0}
 .ck-rows>li+li .ck-row{border-top:1px solid var(--line)}
 .ck-row{display:grid;grid-template-columns:minmax(0,1fr) 160px 176px 20px;align-items:center;gap:var(--space-4);padding:var(--space-4) 0;color:var(--ink);text-decoration:none;transition:background-color var(--duration-fast)}
@@ -249,7 +227,6 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-row__chev{grid-column:3;grid-row:1}
 }
 
-/* ---------- Tabs ---------- */
 .ck-tabs{display:flex;gap:var(--space-6);border-bottom:1px solid var(--line);overflow-x:auto}
 .ck-tab{display:inline-grid;height:var(--control-height);align-items:center;padding:0;margin-bottom:-1px;border:0;border-bottom:2px solid transparent;background:none;font:var(--text-body);color:var(--ink-muted);cursor:pointer;white-space:nowrap;border-radius:0}
 .ck-tab::after{content:attr(data-label);font-weight:600;visibility:hidden;height:0;overflow:hidden}
@@ -258,7 +235,6 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-tab[aria-selected="true"]{font-weight:600;color:var(--ink);border-bottom-color:var(--ink)}
 .ck-tab__count{font-variant-numeric:tabular-nums}
 
-/* ---------- Disclosure ---------- */
 .ck-disc{border-bottom:1px solid var(--line)}
 .ck-disc--plain{border-bottom:0}
 .ck-disc__btn{display:flex;width:100%;align-items:center;justify-content:space-between;gap:var(--space-4);min-height:var(--control-height);padding:var(--space-2) 0;border:0;background:none;color:var(--ink);text-align:left;cursor:pointer;border-radius:var(--radius-sm)}
@@ -268,18 +244,14 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-disc__btn[aria-expanded="true"] .ck-icon{transform:rotate(180deg)}
 .ck-disc__panel{padding:var(--space-2) 0 var(--space-6)}
 
-/* ---------- Toast ---------- */
 .ck-toast{position:fixed;left:50%;bottom:var(--space-8);transform:translateX(-50%);z-index:110;max-width:calc(100vw - 32px);padding:var(--space-4) var(--space-6);background:var(--ink);color:var(--ink-inverse);border-radius:var(--radius-md);font:var(--text-body)}
 .ck-toast--inline{position:static;transform:none;display:inline-block}
 
-/* ---------- NetworkBanner ---------- */
 .ck-netbanner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-2) var(--space-4);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-6);background:var(--surface-card);border:1px solid var(--line);border-radius:var(--radius-lg);font:var(--text-body)}
 
-/* ---------- EmptyState ---------- */
 .ck-empty{display:flex;flex-direction:column;align-items:center;gap:var(--space-6);padding:var(--space-12) var(--space-6);text-align:center}
 .ck-empty__text{font:var(--text-body);color:var(--ink-muted);max-width:50ch}
 
-/* ---------- Уточнения из макетов «Credit Cabinet» ---------- */
 .ck-table__scroll{overflow-y:hidden}
 .ck-sl__st--done .ck-sl__dot{width:14px;height:14px}
 .ck-sl__seg{border-top-width:4px}

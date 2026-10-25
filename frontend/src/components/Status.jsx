@@ -30,7 +30,6 @@ export function StatusBadge({ status, kind, children }) {
 
 export const stations = ["Подана", "Проверка", "Оценка", "Решение", "Выдача"];
 
-/** Статус заявки → [номер станции, тип станции, подпись по умолчанию]. */
 export const statusLineMap = {
   SUBMITTED: [0, "current", "Заявка у нас, начинаем проверку"],
   CHECKING: [1, "current", "Проверяем компанию в реестрах и кредитную историю. Обычно 1–2 минуты"],
@@ -46,11 +45,6 @@ export const statusLineMap = {
 
 const SR = { done: "пройдено", current: "сейчас здесь", waiting: "ждём вас", future: "впереди", stopped: "остановлено" };
 
-/**
- * Линия «метро» с путём заявки.
- * stop — номер станции, на которой остановилась отклонённая заявка (по умолчанию «Решение»).
- * at — переопределяет станцию: дозапрос от специалиста ждёт клиента на «Оценке», а не на «Проверке».
- */
 export function StatusLine({ status, caption, action, orientation = "responsive", label = "Путь заявки", stop, at: atOverride }) {
   const m = statusLineMap[status];
   if (!m) return null;

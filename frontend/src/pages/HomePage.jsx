@@ -5,19 +5,19 @@ import { api } from "../api/index.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useIsMobile, useResource } from "../lib/hooks.js";
 import { firstName, formatDate, formatDateTime, formatMoney } from "../lib/format.js";
-import { HOME_PHRASE, productLine, productName, variantName } from "../lib/labels.js";
+import { COMPANY_STATUS, HOME_PHRASE, isActive, productLine, productName, shortId, variantName } from "../lib/labels.js";
 import { ContractsTable } from "./ContractsPage.jsx";
 
 export function companyItems(c) {
   const rows = [
     ["Название", c.name],
     ["ИНН", c.inn],
-    [c.inn?.length === 12 ? "ОГРНИП" : "ОГРН", c.ogrn],
+    [c.kind === "IE" ? "ОГРНИП" : "ОГРН", c.ogrn],
     ["Дата регистрации", formatDate(c.registered_at)],
-    ["Статус", c.status],
-    ["ОКВЭД", c.okved],
+    ["Статус", COMPANY_STATUS[c.status] || c.status],
+    ["ОКВЭД", c.okved && `${c.okved.code} ${c.okved.label}`],
     ["Руководитель", c.director],
-    ["Учредители", (c.founders || []).join(", ")],
+    ["Учредители", (c.founders || []).map((f) => `${f.name} — ${String(f.share_pct).replace(".", ",")}%`).join(", ")],
     ["Адрес", c.address],
   ];
   return rows.filter(([, v]) => v).map(([label, value]) => ({ label, value }));
@@ -33,7 +33,7 @@ function ApplicationsTable({ items, mobile, showCompany }) {
         {items.map((a) => (
           <Link key={a.id} to={`/applications/${a.id}`} className="app-line">
             <span className="stack stack-1">
-              <span className="small muted">№{a.id} · обновлена {formatDateTime(a.updated_at)}</span>
+              <span className="small muted">№{shortId(a.id)} · обновлена {formatDateTime(a.updated_at)}</span>
               <span>{productShort(a)}</span>
               <span className="row row-2"><span className="body-strong num">{formatMoney(a.amount)}</span><StatusBadge status={a.status} /></span>
             </span>
@@ -44,7 +44,7 @@ function ApplicationsTable({ items, mobile, showCompany }) {
     );
   }
   const cols = [
-    { key: "num", title: "Номер", render: (a) => `№${a.id}` },
+    { key: "num", title: "Номер", render: (a) => `№${shortId(a.id)}` },
     ...(showCompany ? [{ key: "company", title: "Компания", render: (a) => a.company_name }] : []),
     { key: "product", title: "Продукт", render: productShort },
     { key: "amount", title: "Сумма", numeric: true, render: (a) => formatMoney(a.amount) },
@@ -72,31 +72,33 @@ export function HomePage() {
   const mobile = useIsMobile();
   const navigate = useNavigate();
   const inn = company?.inn;
-  const apps = useResource(() => api.applications(inn ? { inn } : undefined), [inn]);
+  const apps = useResource(() => api.applications(), []);
   const contracts = useResource(() => api.contracts(), []);
   const purposes = useResource(() => api.purposes(), []);
-  const [live, setLive] = useState(null);
+  const companyRes = useResource(() => (inn ? api.company(inn).catch(() => null) : null), [inn]);
 
-  const items = apps.data?.items || [];
-  const active = items.find((a) => !a.is_final);
+  const items = (apps.data?.items || []).filter((a) => !inn || a.inn === inn);
+  const active = items.find((a) => isActive(a.status));
   const activeId = active?.id;
+  const moving = ["SUBMITTED", "CHECKING", "SCORING", "MANUAL_REVIEW"].includes(active?.status);
+
+  const [step, setStep] = useState(null);
 
   useEffect(() => {
-    if (!activeId) return;
-    setLive(null);
+    if (!activeId || !moving) return;
     return api.subscribeStatus(activeId, (msg) => {
-      setLive(msg);
-      apps.reload({ silent: true });
+      if (msg.type === "application.step") setStep(msg.label);
+      else apps.reload({ silent: true });
     });
-  }, [activeId]);
+  }, [activeId, moving]);
 
   if (apps.loading && !apps.data) return <HomeSkeleton />;
 
   const name = firstName(user.full_name);
-  const status = live?.status || active?.status;
+  const status = active?.status;
   const phrase = active ? `${name}, ${HOME_PHRASE[status] || "заявка в работе"}` : `${name}, активных заявок нет`;
-  const withCompany = active?.company ? active : items.find((a) => a.company);
-  const myContracts = (contracts.data || []).filter((c) => !inn || c.inn === inn);
+  const companyData = companyRes.data;
+  const myContracts = contracts.data || [];
   const draft = status === "DRAFT";
 
   const applyCard = active && (
@@ -104,16 +106,16 @@ export function HomePage() {
       <div className={"stack " + (mobile ? "stack-4" : "stack-6")}>
         {mobile ? (
           <div className="stack stack-1">
-            <span className="small muted">Заявка №{active.id}</span>
+            <span className="small muted">Заявка №{shortId(active.id)}</span>
             <span className="body-strong">{productLine(active, { term: false })}</span>
           </div>
         ) : (
-          <h2 className="h2">Заявка №{active.id} · {productLine(active, { term: false })}</h2>
+          <h2 className="h2">Заявка №{shortId(active.id)} · {productLine(active, { term: false })}</h2>
         )}
         {draft ? (
           <p className="muted">Анкета заполнена не до конца — заявка ещё не в банке</p>
         ) : (
-          <StatusLine status={status} caption={live?.step_label || active.step_label || undefined} orientation={mobile ? "vertical" : "horizontal"} />
+          <StatusLine status={status} caption={status === "CHECKING" && step ? step : undefined} orientation={mobile ? "vertical" : "horizontal"} />
         )}
         <div>
           {draft ? <Link to={`/apply?id=${active.id}`}>Продолжить анкету</Link> : <Link to={`/applications/${active.id}`}>Открыть заявку</Link>}
@@ -152,18 +154,18 @@ export function HomePage() {
     </Card>
   );
 
-  const companyCard = withCompany && (
+  const companyCard = companyData && (
     mobile ? (
       <Card>
         <Disclosure title="Компания" plain>
-          <KeyValue items={companyItems(withCompany.company)} source="ЕГРЮЛ" />
+          <KeyValue items={companyItems(companyData)} source="ЕГРЮЛ" />
         </Disclosure>
       </Card>
     ) : (
       <Card>
         <div className="stack stack-2">
           <div className="row row-4 row--between row--baseline"><h2 className="h2">Компания</h2><span className="small muted">Из ЕГРЮЛ</span></div>
-          <KeyValue items={companyItems(withCompany.company)} />
+          <KeyValue items={companyItems(companyData)} />
         </div>
       </Card>
     )

@@ -12,7 +12,6 @@ import { QueuePage } from "./pages/analyst/QueuePage.jsx";
 import { ReportPage } from "./pages/analyst/ReportPage.jsx";
 import { NotFoundPage } from "./pages/StatePages.jsx";
 
-/** Ошибка отрисовки не должна оставлять белый экран. */
 class ErrorBoundary extends Component {
   state = { error: null };
   static getDerivedStateFromError(error) { return { error }; }

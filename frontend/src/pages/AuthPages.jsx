@@ -3,15 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button, Card, Field, FormError } from "../components/index.js";
 import { api, fieldErrors } from "../api/index.js";
 import { useAuth } from "../auth/AuthContext.jsx";
-
-const ACCOUNTS = [
-  ["bakery", "Пекарня Колос"],
-  ["romashka", "Ромашка"],
-  ["sokolov", "ИП Соколов"],
-  ["ivanova", "ИП Иванова"],
-  ["techprom", "Техпром"],
-  ["analyst", "Кредитный аналитик"],
-];
+import { parseDateNumeric } from "../lib/format.js";
 
 const homeFor = (user) => (user.role === "ANALYST" ? "/analyst" : "/");
 
@@ -53,10 +45,6 @@ export function LoginPage() {
             <FormError>{error}</FormError>
           </form>
         </Card>
-        <div className="auth__accounts">
-          {ACCOUNTS.map(([l, name]) => <span key={l}>{l} / {name}</span>)}
-          <strong>Пароль у всех: demo</strong>
-        </div>
         <div className="auth__switch"><Link to="/register">Зарегистрироваться</Link></div>
       </div>
     </main>
@@ -73,19 +61,25 @@ export function RegisterPage() {
   const submit = async (e) => {
     e.preventDefault();
     const local = {};
-    if (!f.full_name.trim()) local.full_name = "Укажите фамилию, имя и отчество";
-    if (!f.login.trim()) local.login = "Придумайте логин";
-    if (f.password.length < 4) local.password = "Пароль — не короче 4 символов";
+    const issuedAt = parseDateNumeric(f.issued_at);
+    if (f.full_name.trim().length < 3) local.full_name = "Укажите фамилию, имя и отчество";
+    if (!/^[A-Za-z0-9._@-]{3,64}$/.test(f.login.trim())) local.login = "Логин — от 3 символов: латиница, цифры, точка, _, @, -";
+    if (f.password.length < 8) local.password = "Пароль — не короче 8 символов";
+    if (!/^\d{4}$/.test(f.series) || !/^\d{6}$/.test(f.number)) local.passport = "Серия — 4 цифры, номер — 6 цифр";
+    else if (!issuedAt) local.passport = "Укажите дату выдачи в формате дд.мм.гггг";
     setErrors(local);
     if (Object.keys(local).length) return;
     setBusy(true);
     try {
-      await api.register({ login: f.login.trim(), password: f.password, full_name: f.full_name.trim(), passport: { series: f.series, number: f.number, issued_at: f.issued_at } });
+      await api.register({ login: f.login.trim(), password: f.password, full_name: f.full_name.trim(), passport: { series: f.series, number: f.number, issued_at: issuedAt } });
       navigate("/login", { state: { login: f.login.trim() } });
     } catch (err) {
       const fe = fieldErrors(err);
       if (err.status === 409) setErrors({ login: fe.login || "Логин занят" });
-      else if (err.status === 422) setErrors({ passport: fe.passport || "Паспорт недействителен — проверьте серию, номер и дату выдачи", ...fe });
+      else if (err.status === 422) {
+        const passport = Object.entries(fe).find(([k]) => k.startsWith("passport"))?.[1];
+        setErrors({ ...fe, passport: passport || (Object.keys(fe).length ? null : err.message || "Паспорт недействителен — проверьте серию, номер и дату выдачи") });
+      }
       else setErrors({ form: err.message });
     } finally {
       setBusy(false);

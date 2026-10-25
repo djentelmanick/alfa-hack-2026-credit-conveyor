@@ -72,7 +72,6 @@ export function FileUpload({ label = "Выписка по счёту", hint = "�
   );
 }
 
-/** Модальное окно — только для текста договора. */
 export function Modal({ open = true, title, children, onClose, closeLabel = "Закрыть" }) {
   const ref = useRef(null);
   const tid = useId();

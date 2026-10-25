@@ -1,81 +1,94 @@
 import { http, tokenStore, wsUrl } from "./client.js";
 
-/** Обращения к бэкенду. Пути и поля — из макетов «Credit Cabinet» (поля справа от артбордов). */
 export const realApi = {
-  // Вход и пользователь
   login: (login, password) => http.post("/auth/login", { login, password }),
   register: (body) => http.post("/auth/register", body),
   me: () => http.get("/auth/me"),
 
-  // Справочники и продукты
   purposes: () => http.get("/dictionaries/purposes"),
   collateralTypes: () => http.get("/dictionaries/collateral-types"),
   products: () => http.get("/products"),
-  recommendation: (purpose) => http.get("/products/recommendation", { purpose }),
+  recommendation: (purpose) => http.post("/products/recommendation", { purpose }),
 
-  // Заявки клиента
-  applications: (query) => http.get("/applications", query),
-  application: (id) => http.get(`/applications/${id}`),
-  createApplication: (body) => http.post("/applications", body),
-  updateApplication: (id, body) => http.patch(`/applications/${id}`, body),
-  validateApplication: (id) => http.post(`/applications/${id}/validate`),
-  submitApplication: (id) => http.post(`/applications/${id}/submit`),
-  uploadStatement: (id, file) => http.upload(`/applications/${id}/statements`, file),
-  deleteStatement: (id, statementId) => http.del(`/applications/${id}/statements/${statementId}`),
-  decision: (id) => http.get(`/applications/${id}/decision`),
-  history: (id) => http.get(`/applications/${id}/history`),
-  accept: (id, offerId) => http.post(`/applications/${id}/accept`, { offer_id: offerId }),
-  cancel: (id) => http.post(`/applications/${id}/cancel`),
-  signingCode: (id) => http.post(`/applications/${id}/signing/code`),
-  signingConfirm: (id, code) => http.post(`/applications/${id}/signing/confirm`, { code }),
+  company: (inn) => http.post("/companies/get", { inn }),
+  consents: (inn) => http.post("/consents/list", { inn }),
+  giveConsents: (inn, types) => http.post("/consents/give", { inn, types }),
 
-  consents: (inn) => http.get("/consents", { inn }),
-  giveConsents: (inn, types) => http.post("/consents", { inn, types }),
+  applications: ({ status, page = 1, size = 100 } = {}) => http.post("/applications/list", { status: status || null, page, size }),
+  application: (id) => http.post("/applications/get", { application_id: id }),
+  createApplication: (body) => http.post("/applications/create", body),
+  updateApplication: (id, body) => http.post("/applications/update", { application_id: id, ...body }),
+  validateApplication: (id) => http.post("/applications/validate", { application_id: id }),
+  submitApplication: (id) => http.post("/applications/submit", { application_id: id }),
+  uploadStatement: (id, file) => http.upload("/applications/statements/upload", file, { application_id: id }),
+  deleteStatement: (id, statementId) => http.post("/applications/statements/delete", { application_id: id, statement_id: statementId }),
+  statementUrl: (id, statementId) => http.post("/applications/statements/download-url", { application_id: id, statement_id: statementId }),
+  decision: (id) => http.post("/applications/decision", { application_id: id }),
+  history: (id) => http.post("/applications/history", { application_id: id }),
+  accept: (id, offerId) => http.post("/applications/accept", { application_id: id, offer_id: offerId || null }),
+  cancel: (id, reason) => http.post("/applications/cancel", { application_id: id, reason: reason || null }),
+  signingCode: (id) => http.post("/applications/signing/code", { application_id: id }),
+  signingConfirm: (id, code) => http.post("/applications/signing/confirm", { application_id: id, code }),
 
-  /**
-   * Статус заявки в реальном времени: вебсокет /applications/{id}/status → {status, step_label, expires_at}.
-   * Переподключается сам. Возвращает функцию отписки.
-   */
   subscribeStatus(id, onMessage) {
     let ws;
     let closed = false;
+    let open = false;
     let delay = 1000;
-    const open = () => {
+    let ping;
+    const connect = () => {
       const token = tokenStore.get();
-      ws = new WebSocket(wsUrl(`/applications/${id}/status`) + (token ? `?token=${encodeURIComponent(token)}` : ""));
-      ws.onopen = () => { delay = 1000; };
-      ws.onmessage = (e) => { try { onMessage(JSON.parse(e.data)); } catch { /* не JSON — пропускаем */ } };
-      ws.onclose = () => {
-        if (closed) return;
-        setTimeout(open, delay);
+      if (!token) return;
+      ws = new WebSocket(wsUrl("/ws/applications"), ["bearer", token]);
+      ws.onopen = () => {
+        open = true;
+        delay = 1000;
+        ping = setInterval(() => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ type: "ping" })), 25000);
+      };
+      ws.onmessage = (e) => {
+        let msg;
+        try { msg = JSON.parse(e.data); } catch { return; }
+        if (!msg || msg.type === "pong") return;
+        if (msg.type === "snapshot") {
+          if (msg.applications?.some((a) => String(a.application_id) === String(id))) onMessage(msg);
+          return;
+        }
+        if (msg.application_id && String(msg.application_id) !== String(id)) return;
+        onMessage(msg);
+      };
+      ws.onclose = (e) => {
+        open = false;
+        clearInterval(ping);
+        if (closed || e.code === 4401) return;
+        setTimeout(() => { if (!closed) connect(); }, delay);
         delay = Math.min(delay * 2, 15000);
       };
     };
-    open();
-    return () => { closed = true; ws && ws.close(); };
+    connect();
+    const poll = setInterval(() => { if (!open) onMessage({ type: "poll" }); }, 3000);
+    return () => { closed = true; clearInterval(poll); clearInterval(ping); ws && ws.close(); };
   },
 
-  // Договоры
-  contracts: () => http.get("/contracts"),
-  contract: (id) => http.get(`/contracts/${id}`),
-  schedule: (id, version) => http.get(`/contracts/${id}/schedule`, { version }),
-  operations: (id) => http.get(`/contracts/${id}/operations`),
-  versions: (id) => http.get(`/contracts/${id}/versions`),
-  takeTranche: (id, amount) => http.post(`/contracts/${id}/tranches`, { amount }),
-  repayTranche: (id, trancheId, amount) => http.post(`/contracts/${id}/tranches/${trancheId}/repay`, { amount }),
-  repay: (id, kind, amount) => http.post(`/contracts/${id}/repayments`, { kind, amount }),
-  emulateNextMonth: (id) => http.post(`/contracts/${id}/emulation/next-month`),
-  emulateRewind: (id, targetDate) => http.post(`/contracts/${id}/emulation/rewind`, { target_date: targetDate }),
-  emulateReset: (id) => http.post(`/contracts/${id}/emulation/reset`),
+  contracts: (applicationId) => http.post("/contracts/list", { application_id: applicationId || null }),
+  contract: (id) => http.post("/contracts/get", { contract_id: id }),
+  schedule: (id, versionNo) => http.post("/contracts/schedule", { contract_id: id, version_no: versionNo || null }),
+  operations: (id, { page = 1, size = 100 } = {}) => http.post("/contracts/operations", { contract_id: id, page, size }),
+  versions: (id) => http.post("/contracts/versions", { contract_id: id }),
+  documentUrl: (id, versionNo) => http.post("/contracts/document-url", { contract_id: id, version_no: versionNo || null }),
+  takeTranche: (id, amount) => http.post("/contracts/tranches/draw", { contract_id: id, amount }),
+  repayTranche: (id, trancheId, amount) => http.post("/contracts/tranches/repay", { contract_id: id, tranche_id: trancheId, amount }),
+  repay: (id, kind, amount) => http.post("/contracts/repay", { contract_id: id, kind, amount: kind === "PARTIAL" ? amount : null }),
+  emulateNextMonth: (id) => http.post("/contracts/emulation/next-month", { contract_id: id }),
+  emulateRewind: (id, targetDate) => http.post("/contracts/emulation/rewind", { contract_id: id, target_date: targetDate }),
+  emulateReset: (id) => http.post("/contracts/emulation/reset", { contract_id: id }),
 
-  // Аналитик
-  analystApplications: (query) => http.get("/analyst/applications", query),
-  analystReport: (id) => http.get(`/analyst/applications/${id}/report`),
-  analystApprove: (id, body) => http.post(`/analyst/applications/${id}/approve`, body),
-  analystCounterOffer: (id, body) => http.post(`/analyst/applications/${id}/counter-offer`, body),
-  analystRequestInfo: (id, body) => http.post(`/analyst/applications/${id}/request-info`, body),
-  analystReject: (id, body) => http.post(`/analyst/applications/${id}/reject`, body),
-  analystRecheck: (id, body) => http.post(`/analyst/applications/${id}/recheck`, body),
-  analystRejectReasons: () => http.get("/dictionaries/reject-reasons"),
-  analystUpdateContract: (id, body) => http.patch(`/analyst/contracts/${id}`, body),
+  analystApplications: ({ queue, status, inn, risk_class, page = 1, size = 20 } = {}) =>
+    http.post("/analyst/applications/list", { queue: queue || null, status: status || null, inn: inn || null, risk_class: risk_class || null, page, size }),
+  analystReport: (id) => http.post("/analyst/applications/report", { application_id: id }),
+  analystApprove: (id, body) => http.post("/analyst/applications/approve", { application_id: id, ...body }),
+  analystCounterOffer: (id, body) => http.post("/analyst/applications/counter-offer", { application_id: id, ...body }),
+  analystRequestInfo: (id, body) => http.post("/analyst/applications/request-info", { application_id: id, ...body }),
+  analystReject: (id, body) => http.post("/analyst/applications/reject", { application_id: id, ...body }),
+  analystRecheck: (id, body) => http.post("/analyst/applications/recheck", { application_id: id, ...body }),
+  analystUpdateContract: (id, body) => http.post("/analyst/contracts/update", { contract_id: id, ...body }),
 };

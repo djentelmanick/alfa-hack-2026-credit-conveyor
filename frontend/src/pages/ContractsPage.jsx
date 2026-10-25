@@ -28,7 +28,6 @@ export function ContractsTable({ items, mobile, analyst = false }) {
   }
   const cols = [
     { key: "number", title: "Номер", render: (c) => `№${c.number}` },
-    ...(analyst ? [{ key: "company", title: "Компания", render: (c) => c.company_name }] : []),
     { key: "product", title: "Продукт", render: (c) => `${productName(c.product_code)} ${variantName(c.variant)}` },
     { key: "status", title: "Статус", render: (c) => <ContractBadge status={c.status} /> },
     { key: "outstanding", title: "Остаток долга", numeric: true, render: (c) => formatMoney(c.outstanding) },
