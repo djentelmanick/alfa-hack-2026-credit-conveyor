@@ -10,6 +10,7 @@ from app.domain.checks.context import PipelineContext, Verification
 from app.domain.dates import add_months
 from app.domain.entities import BankStatement, CheckResult
 from app.domain.enums import CheckOutcome, CheckStage, CompanyKind, SignatureStatus
+from app.domain.labels import SIGNATURE_STATUS_LABELS
 from app.domain.value_objects import CompanyProfile
 
 
@@ -46,7 +47,7 @@ class BankSignatureStrategy(AuthenticityStrategy):
         return _result(
             self.code,
             "подпись банка есть и верна",
-            f"подпись {status}",
+            f"подпись {SIGNATURE_STATUS_LABELS[status]}",
             _passed(status is SignatureStatus.VALID),
         )
 

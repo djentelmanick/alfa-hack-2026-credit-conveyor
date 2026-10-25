@@ -8,6 +8,7 @@ from typing import ClassVar
 from app.domain.checks.context import CheckingData
 from app.domain.entities import CheckResult
 from app.domain.enums import CheckOutcome, CheckStage, CompanyStatus, KycLevel, SourceType
+from app.domain.labels import COMPANY_STATUS_LABELS, KYC_LEVEL_LABELS
 from app.domain.products import ProductCatalog
 from app.domain.value_objects import BailiffInfo, CompanyProfile, TaxInfo
 
@@ -68,7 +69,7 @@ class CompanyInactiveRule(StopFactorRule):
 
     def _evaluate(self, data: CheckingData) -> tuple[str, bool]:
         status = _company(data).status
-        return f"статус {status}", status is not CompanyStatus.ACTIVE
+        return f"статус: {COMPANY_STATUS_LABELS[status]}", status is not CompanyStatus.ACTIVE
 
 
 class BusinessAgeUnder6mRule(StopFactorRule):
@@ -147,7 +148,7 @@ class CbrRedLevelRule(StopFactorRule):
 
     def _evaluate(self, data: CheckingData) -> tuple[str, bool]:
         level = _required(data.cbr_level, SourceType.CBR_KYC)
-        return f"уровень {level}", level is KycLevel.RED
+        return f"уровень {KYC_LEVEL_LABELS[level]}", level is KycLevel.RED
 
 
 class RosfinListRule(StopFactorRule):

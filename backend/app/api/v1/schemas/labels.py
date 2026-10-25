@@ -2,24 +2,9 @@
 
 from collections.abc import Mapping
 
-from app.domain.enums import ApplicationStatus
+from app.domain.labels import APPLICATION_STATUS_LABELS as STATUS_LABELS
 
-S = ApplicationStatus
-
-STATUS_LABELS: Mapping[ApplicationStatus, str] = {
-    S.DRAFT: "Черновик",
-    S.SUBMITTED: "Отправлена",
-    S.CHECKING: "Проверка",
-    S.NEEDS_INFO: "Нужны данные",
-    S.SCORING: "Скоринг",
-    S.MANUAL_REVIEW: "На рассмотрении",
-    S.APPROVED: "Одобрена",
-    S.COUNTER_OFFER: "Контрпредложение",
-    S.SIGNING: "Подписание",
-    S.ISSUED: "Выдан",
-    S.REJECTED: "Отказ",
-    S.CANCELLED: "Отменена",
-}
+__all__ = ["CHECK_TITLES", "INFO_ITEM_LABELS", "REASON_LABELS", "STATUS_LABELS"]
 
 REASON_LABELS: Mapping[str, str] = {
     # Стоп-факторы
