@@ -1,11 +1,15 @@
 """Схема /openapi.json описывает то, что API реально отдаёт (docs/API.md)."""
 
+from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi import FastAPI
 
+from app.api.openapi_export import render_schema
+
 ERROR_OUT = "#/components/schemas/ErrorOut"
+OPENAPI_FILE = Path(__file__).resolve().parents[3] / "docs" / "openapi.json"
 
 
 @pytest.fixture
@@ -53,3 +57,12 @@ def test_required_fields(schema: dict[str, Any]) -> None:
 )
 def test_read_endpoints_do_not_declare_409(schema: dict[str, Any], path: str) -> None:
     assert "409" not in schema["paths"][path]["post"]["responses"]
+
+
+def test_committed_openapi_matches_app(app: FastAPI) -> None:
+    committed = OPENAPI_FILE.read_text(encoding="utf-8")
+
+    assert committed == render_schema(app), (
+        "docs/openapi.json устарел: docker compose exec -T api "
+        "python -m app.api.openapi_export > docs/openapi.json"
+    )
