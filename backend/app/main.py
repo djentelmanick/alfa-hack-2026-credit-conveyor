@@ -25,6 +25,7 @@ from app.api.v1.deps import Container, Lifecycle
 from app.application.analyst_service import AnalystService
 from app.application.application_service import ApplicationService, StatementFiles
 from app.application.auth_service import AuthService
+from app.application.authority_service import AuthorityService
 from app.application.company_service import CompanyService
 from app.application.consent_service import ConsentService
 from app.application.contract_service import ContractDocuments, ContractService
@@ -71,6 +72,8 @@ from app.infra.mocks import (
     MockFailures,
     MockFnsAdapter,
     MockFsspAdapter,
+    MockMchdAdapter,
+    MockNotaryPoaAdapter,
     MockPassportAdapter,
     MockRosfinAdapter,
     MockSignatureAdapter,
@@ -85,6 +88,8 @@ from app.infra.retrying import (
     RetryingCbrKyc,
     RetryingCompanyRegistry,
     RetryingCreditBureau,
+    RetryingMchdRegistry,
+    RetryingNotaryPoaRegistry,
     RetryingRosfinmonitoring,
     RetryingSignatureVerifier,
     RetryingTaxService,
@@ -257,6 +262,13 @@ def build_container(
         url_ttl=url_ttl,
     )
     contracts = ContractService(uow=uow, catalog=catalog, documents=documents, clock=clock)
+    authority = AuthorityService(
+        mchd=RetryingMchdRegistry(MockMchdAdapter(fixtures, failures, delay_ms=delay), retry),
+        notary=RetryingNotaryPoaRegistry(
+            MockNotaryPoaAdapter(fixtures, failures, delay_ms=delay), retry
+        ),
+        clock=clock,
+    )
 
     return Container(
         db_probe=DatabaseProbe(engine),
@@ -271,12 +283,14 @@ def build_container(
             clock=clock,
         ),
         consents=ConsentService(uow=uow, registry=registry, clock=clock),
-        companies=CompanyService(uow=uow, registry=registry, turnover=turnover),
+        companies=CompanyService(
+            uow=uow, registry=registry, turnover=turnover, authority=authority
+        ),
         applications=ApplicationService(
             uow=uow,
             catalog=catalog,
             registry=registry,
-            validator=FormValidator(catalog, registry, turnover),
+            validator=FormValidator(catalog, registry, turnover, authority),
             queue=queue,
             publisher=publisher,
             clock=clock,

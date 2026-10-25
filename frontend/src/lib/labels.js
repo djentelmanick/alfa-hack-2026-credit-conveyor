@@ -45,6 +45,23 @@ export const isActive = (status) => ACTIVE_STATUSES.includes(status);
 
 export const shortId = (id) => String(id || "").slice(0, 8);
 
+// Роли из кейса; SOLE_TRADER выставляет сервер для ИП и в выборе не показывается.
+export const APPLICANT_ROLES = [
+  ["DIRECTOR", "Генеральный директор"],
+  ["OWNER", "Собственник бизнеса"],
+  ["FINANCE_OFFICER", "Финансовый директор или бухгалтер"],
+  ["FUNDING_OFFICER", "Сотрудник, отвечающий за финансирование"],
+  ["BANKING_OFFICER", "Сотрудник, работающий с банковскими продуктами"],
+  ["OTHER_AUTHORIZED", "Иной уполномоченный сотрудник"],
+];
+export const roleName = (code) => (code === "SOLE_TRADER" ? "Индивидуальный предприниматель" : Object.fromEntries(APPLICANT_ROLES)[code] || code);
+export const isRepresentative = (authority) => authority?.basis === "POWER_OF_ATTORNEY";
+
+// Личные согласия директора и собственника представитель только подтверждает: дать их за другого человека нельзя.
+export const REPRESENTATIVE_CONSENT_LABELS = {
+  BKI_PERSONAL: "Подтверждаю, что согласие руководителя на запрос его кредитной истории получено",
+};
+
 export const CONSENT_LABELS = {
   PERSONAL_DATA: "Согласие на обработку персональных данных",
   BKI_COMPANY: "Согласие на запрос кредитной истории компании",

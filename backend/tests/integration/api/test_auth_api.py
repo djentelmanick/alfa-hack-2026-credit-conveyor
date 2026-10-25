@@ -16,6 +16,7 @@ REGISTER_BODY: dict[str, Any] = {
     "login": "new-client",
     "password": PASSWORD,
     "full_name": "Петров Алексей Николаевич",
+    "inn": "771401234587",
     "passport": {"series": "4510", "number": "654321", "issued_at": "2015-03-01"},
 }
 
@@ -45,7 +46,7 @@ async def test_register_returns_user_out(client: AsyncClient) -> None:
 
     assert response.status_code == 201
     body = response.json()
-    assert set(body) == {"id", "role", "full_name", "passport_verified", "companies"}
+    assert set(body) == {"id", "role", "full_name", "inn", "passport_verified", "companies"}
     assert body["role"] == "CLIENT"
     assert body["full_name"] == "Петров Алексей Николаевич"
     assert body["passport_verified"] is True
@@ -59,6 +60,33 @@ async def test_register_with_taken_login_is_conflict(client: AsyncClient) -> Non
 
     assert response.status_code == 409
     assert _error_code(response.json()) == "LOGIN_TAKEN"
+
+
+async def test_register_with_bad_inn_checksum_is_validation_error(client: AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/auth/register", json={**REGISTER_BODY, "inn": "771401234588"}
+    )
+
+    assert response.status_code == 422
+    [detail] = response.json()["error"]["details"]
+    assert (detail["field"], detail["code"]) == ("inn", "INN_INVALID")
+
+
+async def test_register_with_taken_inn_is_conflict(client: AsyncClient) -> None:
+    await client.post("/api/v1/auth/register", json=REGISTER_BODY)
+
+    response = await client.post(
+        "/api/v1/auth/register", json={**REGISTER_BODY, "login": "another-login"}
+    )
+
+    assert response.status_code == 409
+    assert _error_code(response.json()) == "INN_TAKEN"
+
+
+async def test_register_without_inn_is_rejected(client: AsyncClient) -> None:
+    body = {k: v for k, v in REGISTER_BODY.items() if k != "inn"}
+    response = await client.post("/api/v1/auth/register", json=body)
+    assert response.status_code == 422
 
 
 async def test_register_with_invalid_passport_is_validation_error(client: AsyncClient) -> None:
@@ -95,7 +123,13 @@ async def test_login_returns_login_out(
     assert body["expires_in"] == int(TOKEN_TTL.total_seconds())
     assert body["user"]["id"] == str(director.id)
     assert body["user"]["companies"] == [
-        {"inn": "7714012340", "name": 'ООО "ПЕКАРНЯ КОЛОС"', "kind": "LLC", "is_director": True}
+        {
+            "inn": "7714012340",
+            "name": 'ООО "ПЕКАРНЯ КОЛОС"',
+            "kind": "LLC",
+            "is_director": True,
+            "basis": None,
+        }
     ]
     assert container.tokens.decode(body["access_token"]).user_id == director.id
 

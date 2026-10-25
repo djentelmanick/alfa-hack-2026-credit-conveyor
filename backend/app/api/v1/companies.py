@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 
 from app.api.v1.deps import Claims, ClientClaims, get_company_service, get_consent_service
 from app.api.v1.schemas.common import ROLE_ERRORS
-from app.api.v1.schemas.company import CompanyOut, ConsentGiveIn, ConsentOut, InnIn
+from app.api.v1.schemas.company import AuthorityIn, CompanyOut, ConsentGiveIn, ConsentOut, InnIn
 from app.api.v1.schemas.errors import ErrorOut
 from app.application.company_service import CompanyService
 from app.application.consent_service import ConsentService
@@ -27,6 +27,24 @@ Consents = Annotated[ConsentService, Depends(get_consent_service)]
 )
 async def get_company(body: InnIn, claims: Claims, companies: Companies) -> CompanyOut:
     return CompanyOut.from_domain(await companies.get(claims, body.inn))
+
+
+@router.post(
+    "/companies/authority",
+    summary="Подтвердить полномочия представителя по доверенности",
+    description=(
+        "Директор и ИП проходят по ЕГРЮЛ/ЕГРИП без доверенности. Остальные прикладывают МЧД "
+        "или нотариальную доверенность; после проверки компания привязывается к пользователю."
+    ),
+    responses={**ROLE_ERRORS, 404: {"model": ErrorOut}, 503: {"model": ErrorOut}},
+    response_model_exclude_none=True,
+)
+async def claim_authority(
+    body: AuthorityIn, claims: ClientClaims, companies: Companies
+) -> CompanyOut:
+    return CompanyOut.from_domain(
+        await companies.claim_authority(claims, body.inn, body.to_claim())
+    )
 
 
 @router.post(

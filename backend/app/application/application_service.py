@@ -203,6 +203,7 @@ class ApplicationService:
         async with self._uow() as uow:
             if await uow.applications.find_active_by_inn(inn) is not None:
                 raise ActiveApplicationExists()
+            applicant = await uow.users.get(claims.user_id)
             app = Application.create_draft(
                 id=uuid4(),
                 applicant_id=claims.user_id,
@@ -214,6 +215,7 @@ class ApplicationService:
                 product=product,
                 now=self._clock.now(),
                 consents=await uow.consents.list_for(inn, claims.user_id),
+                authority=await self._validator.authority_of(applicant, company),
             )
             await uow.applications.add(app)
             await uow.commit()

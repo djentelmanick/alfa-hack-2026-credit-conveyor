@@ -1,9 +1,11 @@
 """Проверки формы перед отправкой заявки (SCOPE раздел 4, этап 1; BACKEND_SPEC раздел 6)."""
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import ClassVar
 
+from app.application.authority_service import AuthorityClaim, AuthorityService
+from app.domain.authority import ApplicantAuthority
 from app.domain.entities import Application, CheckResult, User
 from app.domain.enums import CheckOutcome, CheckStage, CompanyKind, ConsentType, Variant
 from app.domain.errors import (
@@ -16,6 +18,7 @@ from app.domain.errors import (
 from app.domain.labels import APPLICATION_STATUS_LABELS, CONSENT_TYPE_LABELS
 from app.domain.ports import AccountTurnoverPort, ApplicationRepository, CompanyRegistryPort
 from app.domain.products import LoanProduct, ProductCatalog
+from app.domain.value_objects import CompanyProfile
 
 _INN_LENGTH = {CompanyKind.LLC: 10, CompanyKind.IE: 12}
 _DIGITS = re.compile(r"[0-9]+")
@@ -25,6 +28,8 @@ _DIGITS = re.compile(r"[0-9]+")
 class _Check:
     result: CheckResult
     errors: tuple[FieldError, ...] = ()
+    # Нет никаких оснований действовать от имени компании: это 403, а не ошибка полей.
+    forbidden: bool = False
 
 
 def _check(code: str, expected: str, actual: str, errors: tuple[FieldError, ...] = ()) -> _Check:
@@ -56,16 +61,30 @@ class FormValidator:
         catalog: ProductCatalog,
         registry: CompanyRegistryPort,
         turnover: AccountTurnoverPort,
+        authority: AuthorityService,
     ) -> None:
         self._catalog = catalog
         self._registry = registry
         self._turnover = turnover
+        self._authority = authority
+
+    async def authority_of(
+        self, applicant: User, company: CompanyProfile
+    ) -> ApplicantAuthority | None:
+        """Основание для черновика. Без полномочий черновик всё равно создаётся,
+        а отказ с причиной клиент увидит при проверке формы."""
+        try:
+            return await self._authority.resolve(
+                applicant, company, AuthorityClaim.from_link(applicant.company(company.inn))
+            )
+        except NotDirector, ValidationFailed:
+            return None
 
     async def validate(
         self, application: Application, applicant: User, applications: ApplicationRepository
     ) -> list[CheckResult]:
         product = self._product(application)
-        director = await self._applicant_is_director(application, applicant)
+        director = await self._applicant_authority(application, applicant)
         active = await self._no_active_application(application, applications)
         checks = [
             self._form_complete(application),
@@ -79,7 +98,7 @@ class FormValidator:
             await self._statement_uploaded(application),
             self._statement_inn_match(application),
         ]
-        if not director.result.passed:
+        if director.forbidden:
             raise NotDirector()
         if not active.result.passed:
             raise ActiveApplicationExists()
@@ -147,24 +166,46 @@ class FormValidator:
             errors,
         )
 
-    async def _applicant_is_director(self, application: Application, applicant: User) -> _Check:
-        expected = "заявитель руководитель компании по ЕГРЮЛ или сам ИП"
+    async def _applicant_authority(self, application: Application, applicant: User) -> _Check:
+        """Доверенность перепроверяется по реестру: её могли отозвать после привязки компании."""
+        code = "APPLICANT_AUTHORITY"
+        expected = (
+            "заявитель руководитель по ЕГРЮЛ, сам ИП или представитель по действующей доверенности"
+        )
         try:
             company = await self._registry.find_by_inn(application.inn)
         except NotFound:
             return _check(
-                "APPLICANT_IS_DIRECTOR",
+                code,
                 expected,
                 "ИНН не найден в ЕГРЮЛ/ЕГРИП",
-                (FieldError("inn", "APPLICANT_IS_DIRECTOR", "ИНН не найден"),),
+                (FieldError("inn", code, "ИНН не найден"),),
             )
-        if company.is_director(applicant):
-            return _check("APPLICANT_IS_DIRECTOR", expected, company.director)
+        claim = AuthorityClaim.from_link(applicant.company(company.inn))
+        try:
+            authority = await self._authority.resolve(applicant, company, claim)
+        except NotDirector:
+            return replace(
+                _check(
+                    code,
+                    expected,
+                    f"руководитель по ЕГРЮЛ {company.director}, доверенности нет",
+                    (FieldError("inn", code, NotDirector.default_message),),
+                ),
+                forbidden=True,
+            )
+        except ValidationFailed as exc:
+            # Отказ по доверенности это ошибки полей, а не 403: клиент может её исправить.
+            return _check(
+                code, expected, "; ".join(e.message for e in exc.details), tuple(exc.details)
+            )
+        application.authority = authority
+        if authority.poa is None:
+            return _check(code, expected, f"руководитель по ЕГРЮЛ {company.director}")
         return _check(
-            "APPLICANT_IS_DIRECTOR",
+            code,
             expected,
-            f"руководитель по ЕГРЮЛ {company.director}",
-            (FieldError("inn", "APPLICANT_IS_DIRECTOR", NotDirector.default_message),),
+            f"{authority.poa.describe()}, представитель {authority.representative_name}",
         )
 
     async def _no_active_application(

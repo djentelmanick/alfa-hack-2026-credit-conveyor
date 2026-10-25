@@ -19,6 +19,7 @@ PUBLIC_FIELDS = {
     "founders",
     "address",
     "can_apply",
+    "authority_required",
 }
 
 
@@ -56,8 +57,9 @@ async def test_director_gets_company_and_can_apply(
     )
 
     body = response.json()
-    assert set(body) == PUBLIC_FIELDS | {"has_account", "annual_revenue"}
+    assert set(body) == PUBLIC_FIELDS | {"has_account", "annual_revenue", "authority"}
     assert body["can_apply"] is True
+    assert body["authority"]["basis"] == "DIRECTOR"
 
 
 async def test_other_client_gets_only_registry_data(
@@ -74,6 +76,7 @@ async def test_other_client_gets_only_registry_data(
     body = response.json()
     assert set(body) == PUBLIC_FIELDS | {"cannot_apply_reason"}
     assert body["can_apply"] is False
+    assert body["authority_required"] is True
     assert "руководитель" in body["cannot_apply_reason"]
 
 

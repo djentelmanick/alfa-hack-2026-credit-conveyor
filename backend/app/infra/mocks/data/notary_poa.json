@@ -1,0 +1,50 @@
+{
+  "records": [
+    {
+      "notarized_on": "2026-09-15",
+      "register_number": "77/123-н/77-2026-4-512",
+      "notary_name": "Белова Ирина Александровна",
+      "principal": {
+        "inn": "7716012345",
+        "full_name": "ООО \"ПЕКАРНЯ ПЕТРОВЫХ\""
+      },
+      "signed_by": {
+        "inn": "771601234560",
+        "full_name": "ЗУЕВ АНДРЕЙ МИХАЙЛОВИЧ"
+      },
+      "representative": {
+        "inn": "771402345674",
+        "full_name": "ПЕТРОВА МАРИЯ СЕРГЕЕВНА"
+      },
+      "valid_until": "2027-09-15",
+      "revoked": false,
+      "powers": [
+        "LOAN_APPLICATION",
+        "LOAN_AGREEMENT_SIGNING"
+      ]
+    },
+    {
+      "notarized_on": "2026-08-01",
+      "register_number": "77/123-н/77-2026-3-207",
+      "notary_name": "Белова Ирина Александровна",
+      "principal": {
+        "inn": "7716012345",
+        "full_name": "ООО \"ПЕКАРНЯ ПЕТРОВЫХ\""
+      },
+      "signed_by": {
+        "inn": "771601234560",
+        "full_name": "ЗУЕВ АНДРЕЙ МИХАЙЛОВИЧ"
+      },
+      "representative": {
+        "inn": "771402345674",
+        "full_name": "ПЕТРОВА МАРИЯ СЕРГЕЕВНА"
+      },
+      "valid_until": "2027-08-01",
+      "revoked": true,
+      "powers": [
+        "LOAN_APPLICATION",
+        "LOAN_AGREEMENT_SIGNING"
+      ]
+    }
+  ]
+}

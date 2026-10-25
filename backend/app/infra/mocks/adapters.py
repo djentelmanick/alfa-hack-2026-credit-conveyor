@@ -3,10 +3,21 @@
 import hashlib
 import re
 from collections.abc import Sequence
+from datetime import date
 from decimal import Decimal
+from uuid import UUID
 
+from app.domain.authority import PowerOfAttorney
 from app.domain.entities import Consent
-from app.domain.enums import CompanyKind, CompanyStatus, KycLevel, SignatureStatus, SourceType
+from app.domain.enums import (
+    CompanyKind,
+    CompanyStatus,
+    KycLevel,
+    PoaKind,
+    PoaPower,
+    SignatureStatus,
+    SourceType,
+)
 from app.domain.errors import NotFound
 from app.domain.ports import (
     AccountTurnoverPort,
@@ -14,6 +25,8 @@ from app.domain.ports import (
     CbrKycPort,
     CompanyRegistryPort,
     CreditBureauPort,
+    MchdRegistryPort,
+    NotaryPoaRegistryPort,
     PassportCheckPort,
     RosfinmonitoringPort,
     SignatureVerifierPort,
@@ -31,7 +44,14 @@ from app.domain.value_objects import (
     TaxInfo,
 )
 from app.infra.mocks.base import MockSourceAdapter
-from app.infra.mocks.synthetic import BkiReport, EgrulRecord, TurnoverMonth, normalize_text
+from app.infra.mocks.synthetic import (
+    BkiReport,
+    EgrulRecord,
+    MchdRecord,
+    NotaryPoaRecord,
+    TurnoverMonth,
+    normalize_text,
+)
 from app.infra.parsers.statement_1c import BankSignatureBlock, decode_1c
 
 _STATUS = {
@@ -268,3 +288,67 @@ class MockPassportAdapter(MockSourceAdapter, PassportCheckPort):
         return not any(
             p.series == series and p.number == number for p in self._fixtures.passports.invalid
         )
+
+
+class MockMchdAdapter(MockSourceAdapter, MchdRegistryPort):
+    async def find(
+        self, guid: UUID, principal_inn: str, representative_inn: str
+    ) -> PowerOfAttorney | None:
+        await self._respond(SourceType.MCHD, principal_inn)
+        record = next(
+            (
+                r
+                for r in self._fixtures.mchd.records
+                if UUID(r.guid) == guid
+                and r.principal.inn == principal_inn
+                and r.representative.inn == representative_inn
+            ),
+            None,
+        )
+        return None if record is None else _mchd(record)
+
+
+def _mchd(record: MchdRecord) -> PowerOfAttorney:
+    return PowerOfAttorney(
+        kind=PoaKind.MCHD,
+        principal_inn=record.principal.inn,
+        signed_by_inn=record.signed_by.inn,
+        signed_by_name=record.signed_by.full_name,
+        representative_inn=record.representative.inn,
+        valid_until=record.valid_until,
+        revoked=record.status == "revoked",
+        powers=frozenset(PoaPower(p) for p in record.powers),
+    )
+
+
+class MockNotaryPoaAdapter(MockSourceAdapter, NotaryPoaRegistryPort):
+    async def find(
+        self, notarized_on: date, register_number: str, notary_name: str
+    ) -> PowerOfAttorney | None:
+        record = next(
+            (
+                r
+                for r in self._fixtures.notary_poa.records
+                if r.notarized_on == notarized_on
+                and r.register_number == register_number.strip()
+                and normalize_text(r.notary_name) == normalize_text(notary_name)
+            ),
+            None,
+        )
+        # Реестр ФНП ищет по реквизитам, ИНН доверителя заранее неизвестен:
+        # ломаем по ИНН компании из найденной записи.
+        await self._respond(SourceType.NOTARY_POA, *([record.principal.inn] if record else []))
+        return None if record is None else _notary_poa(record)
+
+
+def _notary_poa(record: NotaryPoaRecord) -> PowerOfAttorney:
+    return PowerOfAttorney(
+        kind=PoaKind.NOTARIAL,
+        principal_inn=record.principal.inn,
+        signed_by_inn=record.signed_by.inn,
+        signed_by_name=record.signed_by.full_name,
+        representative_inn=record.representative.inn,
+        valid_until=record.valid_until,
+        revoked=record.revoked,
+        powers=frozenset(PoaPower(p) for p in record.powers),
+    )

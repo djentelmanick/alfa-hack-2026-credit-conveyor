@@ -13,6 +13,7 @@ export const realApi = {
   company: (inn) => http.post("/companies/get", { inn }),
   consents: (inn) => http.post("/consents/list", { inn }),
   giveConsents: (inn, types) => http.post("/consents/give", { inn, types }),
+  claimAuthority: (inn, role, powerOfAttorney) => http.post("/companies/authority", { inn, role, power_of_attorney: powerOfAttorney || null }),
 
   applications: ({ status, page = 1, size = 100 } = {}) => http.post("/applications/list", { status: status || null, page, size }),
   application: (id) => http.post("/applications/get", { application_id: id }),

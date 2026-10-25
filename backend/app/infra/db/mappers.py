@@ -5,11 +5,12 @@ to_row строит новый граф строк из агрегата. Реп
 """
 
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from app.domain.authority import ApplicantAuthority, PoaRequest
 from app.domain.entities import (
     Application,
     AuditEntry,
@@ -35,7 +36,9 @@ from app.domain.entities import (
     UserCompany,
 )
 from app.domain.enums import (
+    ApplicantRole,
     ApplicationStatus,
+    AuthorityBasis,
     CheckOutcome,
     CheckStage,
     CollateralType,
@@ -46,6 +49,7 @@ from app.domain.enums import (
     Direction,
     FetchStatus,
     OperationType,
+    PoaKind,
     Purpose,
     RiskClass,
     Role,
@@ -105,6 +109,7 @@ def user_to_row(user: User) -> UserRow:
         password_hash=user.password_hash,
         role=user.role.value,
         full_name=user.full_name,
+        inn=user.inn,
         passport_verified=user.passport_verified,
         created_at=user.created_at,
         companies=[
@@ -115,6 +120,7 @@ def user_to_row(user: User) -> UserRow:
                 name=c.name,
                 kind=c.kind.value,
                 is_director=c.is_director,
+                authority=authority_to_json(c.authority) if c.authority else None,
             )
             for i, c in enumerate(user.companies)
         ],
@@ -128,12 +134,61 @@ def user_from_row(row: UserRow) -> User:
         password_hash=row.password_hash,
         role=Role(row.role),
         full_name=row.full_name,
+        inn=row.inn,
         passport_verified=row.passport_verified,
         created_at=row.created_at,
         companies=[
-            UserCompany(inn=c.inn, name=c.name, kind=CompanyKind(c.kind), is_director=c.is_director)
+            UserCompany(
+                inn=c.inn,
+                name=c.name,
+                kind=CompanyKind(c.kind),
+                is_director=c.is_director,
+                authority=authority_from_json(c.authority) if c.authority else None,
+            )
             for c in row.companies
         ],
+    )
+
+
+def authority_to_json(authority: ApplicantAuthority) -> dict[str, Any]:
+    poa = authority.poa
+    return {
+        "role": authority.role.value,
+        "basis": authority.basis.value,
+        "representative_inn": authority.representative_inn,
+        "representative_name": authority.representative_name,
+        "registered_founder": authority.registered_founder,
+        "poa": None
+        if poa is None
+        else {
+            "kind": poa.kind.value,
+            "mchd_guid": str(poa.mchd_guid) if poa.mchd_guid else None,
+            "notarized_on": poa.notarized_on.isoformat() if poa.notarized_on else None,
+            "register_number": poa.register_number,
+            "notary_name": poa.notary_name,
+        },
+    }
+
+
+def authority_from_json(data: Mapping[str, Any]) -> ApplicantAuthority:
+    poa = data.get("poa")
+    return ApplicantAuthority(
+        role=ApplicantRole(data["role"]),
+        basis=AuthorityBasis(data["basis"]),
+        representative_inn=data["representative_inn"],
+        representative_name=data["representative_name"],
+        registered_founder=data.get("registered_founder"),
+        poa=None
+        if poa is None
+        else PoaRequest(
+            kind=PoaKind(poa["kind"]),
+            mchd_guid=UUID(poa["mchd_guid"]) if poa.get("mchd_guid") else None,
+            notarized_on=date.fromisoformat(poa["notarized_on"])
+            if poa.get("notarized_on")
+            else None,
+            register_number=poa.get("register_number"),
+            notary_name=poa.get("notary_name"),
+        ),
     )
 
 
@@ -160,6 +215,7 @@ def application_to_row(app: Application) -> ApplicationRow:
         amount=app.amount.amount,
         term_months=app.term_months,
         owner_guarantee=app.owner_guarantee,
+        authority=authority_to_json(app.authority) if app.authority else None,
         collateral_type=collateral.type.value if collateral else None,
         collateral_description=collateral.description if collateral else None,
         collateral_value=collateral.estimated_value.amount if collateral else None,
@@ -338,6 +394,7 @@ def application_from_row(row: ApplicationRow) -> Application:
         term_months=row.term_months,
         owner_guarantee=row.owner_guarantee,
         collateral=collateral,
+        authority=authority_from_json(row.authority) if row.authority else None,
         status=ApplicationStatus(row.status),
         created_at=row.created_at,
         updated_at=row.updated_at,

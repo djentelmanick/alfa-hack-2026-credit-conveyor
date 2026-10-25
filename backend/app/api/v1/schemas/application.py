@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.api.v1.schemas.common import INN_PATTERN, MoneyStr, Percent, RateStr, RequestModel
-from app.api.v1.schemas.company import OkvedOut
+from app.api.v1.schemas.company import AuthorityOut, OkvedOut
 from app.api.v1.schemas.labels import INFO_ITEM_LABELS, STATUS_LABELS, reason_label
 from app.application.application_service import (
     UNSET,
@@ -301,6 +301,7 @@ class ApplicationOut(BaseModel):
     term_months: int
     collateral: CollateralOut | None = None
     owner_guarantee_consent: bool | None = None
+    authority: AuthorityOut | None = None
     statements: list[StatementOut]
     status: ApplicationStatus
     status_label: str
@@ -330,6 +331,7 @@ class ApplicationOut(BaseModel):
             owner_guarantee_consent=a.owner_guarantee
             if a.company_kind is CompanyKind.LLC
             else None,
+            authority=AuthorityOut.from_domain(a.authority) if a.authority else None,
             statements=[StatementOut.from_domain(s, a.inn) for s in a.statements],
             status=a.status,
             status_label=STATUS_LABELS[a.status],

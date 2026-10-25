@@ -23,16 +23,25 @@ class SeedAccount:
     login: str
     full_name: str
     role: Role
-    inn: str | None = None
+    person_inn: str | None = None
+    company_inn: str | None = None
 
 
-# ФИО совпадают с руководителями в синтетике ЕГРЮЛ: по ним проверяется право подать заявку.
+# ИНН физлиц совпадают с руководителями в синтетике ЕГРЮЛ: по ним проверяется право подать заявку.
 SEED_ACCOUNTS = (
-    SeedAccount("kolos", "Петров Алексей Николаевич", Role.CLIENT, "7714012340"),
-    SeedAccount("romashka", "Смирнова Ольга Викторовна", Role.CLIENT, "7703123457"),
-    SeedAccount("sokolov", "Соколов Дмитрий Андреевич", Role.CLIENT, "770498765403"),
-    SeedAccount("ivanova", "Иванова Елена Сергеевна", Role.CLIENT, "770512345650"),
-    SeedAccount("techprom", "Кузнецов Игорь Валентинович", Role.CLIENT, "7704123450"),
+    SeedAccount("kolos", "Петров Алексей Николаевич", Role.CLIENT, "771401234587", "7714012340"),
+    SeedAccount("romashka", "Смирнова Ольга Викторовна", Role.CLIENT, "770312345678", "7703123457"),
+    SeedAccount(
+        "sokolov", "Соколов Дмитрий Андреевич", Role.CLIENT, "770498765403", "770498765403"
+    ),
+    SeedAccount("ivanova", "Иванова Елена Сергеевна", Role.CLIENT, "770512345650", "770512345650"),
+    SeedAccount(
+        "techprom", "Кузнецов Игорь Валентинович", Role.CLIENT, "770623456765", "7704123450"
+    ),
+    # Представители без привязки компании: её делают сами, приложив доверенность в анкете.
+    SeedAccount("buh", "Васильева Анна Игоревна", Role.CLIENT, "771502345660"),
+    SeedAccount("petrova", "Петрова Мария Сергеевна", Role.CLIENT, "771402345674"),
+    SeedAccount("lebedev", "Лебедев Павел Олегович", Role.CLIENT, "770734567870"),
     SeedAccount("analyst", "Орлова Мария Игоревна", Role.ANALYST),
 )
 
@@ -40,6 +49,7 @@ SEED_ACCOUNTS = (
 class SeedOutcome(StrEnum):
     CREATED = "CREATED"
     SKIPPED = "SKIPPED"
+    UPDATED = "UPDATED"
 
 
 async def seed(
@@ -55,8 +65,15 @@ async def seed(
     outcome: dict[str, SeedOutcome] = {}
     async with uow() as unit:
         for account in accounts:
-            if await unit.users.get_by_login(account.login) is not None:
-                outcome[account.login] = SeedOutcome.SKIPPED
+            existing = await unit.users.get_by_login(account.login)
+            if existing is not None:
+                # Учётки из базы до миграции 0008 без ИНН: директоров сверяют по ИНН,
+                # и без него старая демо-база перестала бы пускать их к заявке.
+                if existing.inn is None and account.person_inn is not None:
+                    existing.inn = account.person_inn
+                    outcome[account.login] = SeedOutcome.UPDATED
+                else:
+                    outcome[account.login] = SeedOutcome.SKIPPED
                 continue
             user = User(
                 id=uuid4(),
@@ -64,11 +81,12 @@ async def seed(
                 password_hash=password_hash,
                 role=account.role,
                 full_name=account.full_name,
+                inn=account.person_inn,
                 passport_verified=True,
                 created_at=clock.now(),
             )
-            if account.inn is not None:
-                company = await registry.find_by_inn(account.inn)
+            if account.company_inn is not None:
+                company = await registry.find_by_inn(account.company_inn)
                 if not company.is_director(user):
                     raise ValueError(f"{account.login}: в ЕГРЮЛ руководитель {company.director}")
                 user.link_company(

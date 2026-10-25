@@ -34,6 +34,17 @@ def post(client: TestClient, token: str, path: str, body: dict[str, Any]) -> Any
     return response.json() if response.content else None
 
 
+def claim_authority(
+    client: TestClient, token: str, inn: str, role: str, poa: dict[str, Any]
+) -> httpx.Response:
+    """Шаг анкеты «Кем вы приходитесь компании»: проверка доверенности и привязка компании."""
+    return client.post(
+        f"{API}/companies/authority",
+        json={"inn": inn, "role": role, "power_of_attorney": poa},
+        headers=auth(token),
+    )
+
+
 def create_application(
     client: TestClient, token: str, inn: str, *, consents: list[str] = LLC_CONSENTS, **form: Any
 ) -> str:

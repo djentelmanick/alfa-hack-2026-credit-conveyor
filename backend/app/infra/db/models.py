@@ -64,6 +64,7 @@ class UserRow(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(ENUM)
     full_name: Mapped[str] = mapped_column(String(255))
+    inn: Mapped[str | None] = mapped_column(String(12), unique=True)
     passport_verified: Mapped[bool] = mapped_column(Boolean)
     created_at: Mapped[datetime]
 
@@ -81,6 +82,7 @@ class UserCompanyRow(Base):
     name: Mapped[str] = mapped_column(String(500))
     kind: Mapped[str] = mapped_column(ENUM)
     is_director: Mapped[bool] = mapped_column(Boolean)
+    authority: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class ConsentRow(Base):
@@ -113,6 +115,7 @@ class ApplicationRow(Base):
     amount: Mapped[Decimal] = mapped_column(MONEY)
     term_months: Mapped[int] = mapped_column(Integer)
     owner_guarantee: Mapped[bool] = mapped_column(Boolean)
+    authority: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     collateral_type: Mapped[str | None] = mapped_column(ENUM)
     collateral_description: Mapped[str | None] = mapped_column(Text)
     collateral_value: Mapped[Decimal | None] = mapped_column(MONEY)

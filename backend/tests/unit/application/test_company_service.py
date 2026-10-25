@@ -6,7 +6,7 @@ from app.domain.enums import Role
 from app.domain.errors import NotDirector, NotFound
 from app.domain.value_objects import Money
 from app.infra.mocks import MockEgrulAdapter, MockFailures, MockTurnoverAdapter, SyntheticData
-from tests.fakes.auth import FixedClock, jwt_service, make_user
+from tests.fakes.auth import FixedClock, jwt_service, make_authority_service, make_user
 from tests.fakes.scenarios import IVANOVA, KOLOS
 from tests.fakes.uow import InMemoryStore
 
@@ -23,6 +23,7 @@ def service(store: InMemoryStore) -> CompanyService:
         uow=store.uow,
         registry=MockEgrulAdapter(fixtures, failures),
         turnover=MockTurnoverAdapter(fixtures, failures),
+        authority=make_authority_service(fixtures, failures, FixedClock()),
     )
 
 

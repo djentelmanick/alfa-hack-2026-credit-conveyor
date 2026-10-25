@@ -12,6 +12,7 @@ from app.domain.enums import CheckOutcome, CompanyKind, ConsentType, Purpose, Ro
 from app.domain.errors import ActiveApplicationExists, NotDirector, ValidationFailed
 from app.domain.products import ProductCatalog
 from app.infra.mocks import MockEgrulAdapter, MockFailures, MockTurnoverAdapter, SyntheticData
+from tests.fakes.auth import FixedClock, make_authority_service
 from tests.fakes.context import make_application, make_collateral, make_statement
 from tests.fakes.repositories import InMemoryApplicationRepository
 from tests.fakes.scenarios import IVANOVA, KOLOS, NOW
@@ -35,17 +36,21 @@ def catalog() -> ProductCatalog:
 def validator(fixtures: SyntheticData, catalog: ProductCatalog) -> FormValidator:
     failures = MockFailures()
     return FormValidator(
-        catalog, MockEgrulAdapter(fixtures, failures), MockTurnoverAdapter(fixtures, failures)
+        catalog,
+        MockEgrulAdapter(fixtures, failures),
+        MockTurnoverAdapter(fixtures, failures),
+        make_authority_service(fixtures, failures, FixedClock()),
     )
 
 
-def _user(full_name: str) -> User:
+def _user(full_name: str, inn: str) -> User:
     return User(
         id=uuid4(),
         login="client",
         password_hash="x",
         role=Role.CLIENT,
         full_name=full_name,
+        inn=inn,
         passport_verified=True,
         created_at=NOW,
     )
@@ -56,14 +61,14 @@ def kolos_director(fixtures: SyntheticData) -> User:
     company = fixtures.company(KOLOS)
     assert company is not None
     assert company.egrul.director is not None
-    return _user(company.egrul.director.full_name)
+    return _user(company.egrul.director.full_name, company.egrul.director.inn)
 
 
 @pytest.fixture
 def ivanova(fixtures: SyntheticData) -> User:
     company = fixtures.company(IVANOVA)
     assert company is not None
-    return _user(company.egrul.full_name)
+    return _user(company.egrul.full_name, company.egrul.inn)
 
 
 def _consents(user: User, types: tuple[ConsentType, ...]) -> tuple[Consent, ...]:
@@ -115,7 +120,7 @@ async def test_valid_application_passes_every_check(
         "FORM_COMPLETE",
         "TERMS_IN_RANGE",
         "PURPOSE_ALLOWED",
-        "APPLICANT_IS_DIRECTOR",
+        "APPLICANT_AUTHORITY",
         "NO_ACTIVE_APPLICATION",
         "COLLATERAL_COVERAGE",
         "OWNER_GUARANTEE",
@@ -174,7 +179,7 @@ async def test_revolving_line_only_for_working_capital(
 
 
 async def test_applicant_must_be_director(validator: FormValidator) -> None:
-    stranger = _user("Посторонний Человек")
+    stranger = _user("Посторонний Человек", "771602345657")
     application = _kolos(stranger)
     with pytest.raises(NotDirector):
         await validator.validate(application, stranger, InMemoryApplicationRepository())

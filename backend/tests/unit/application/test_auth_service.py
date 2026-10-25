@@ -36,11 +36,14 @@ def service(store: InMemoryStore, clock: FixedClock) -> AuthService:
     )
 
 
-def _registration(login: str = "New.Client", passport: Passport = VALID_PASSPORT) -> Registration:
+def _registration(
+    login: str = "New.Client", passport: Passport = VALID_PASSPORT, inn: str = "771401234587"
+) -> Registration:
     return Registration(
         login=login,
         password=PASSWORD,
         full_name="  Петров   Алексей Николаевич ",
+        inn=inn,
         passport=passport,
     )
 

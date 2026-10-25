@@ -32,6 +32,9 @@ class InMemoryUserRepository(UserRepository):
     async def get_by_login(self, login: str) -> User | None:
         return next((u for u in self.items.values() if u.login == login), None)
 
+    async def get_by_inn(self, inn: str) -> User | None:
+        return next((u for u in self.items.values() if u.inn == inn), None)
+
     async def add(self, user: User) -> None:
         self.items[user.id] = user
 

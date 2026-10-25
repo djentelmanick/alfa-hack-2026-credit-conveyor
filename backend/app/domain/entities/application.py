@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Self
 from uuid import UUID, uuid4
 
+from app.domain.authority import ApplicantAuthority
 from app.domain.entities.parts import (
     ApplicationForm,
     BankStatement,
@@ -74,6 +75,7 @@ class Application:
         term_months: int,
         owner_guarantee: bool = False,
         collateral: Collateral | None = None,
+        authority: ApplicantAuthority | None = None,
         status: ApplicationStatus = S.DRAFT,
         created_at: datetime,
         updated_at: datetime | None = None,
@@ -105,6 +107,8 @@ class Application:
         self.term_months = term_months
         self.owner_guarantee = owner_guarantee
         self.collateral = collateral
+        # Основание полномочий заявителя на момент последней успешной проверки формы.
+        self.authority = authority
         self._status = status
         self.created_at = created_at
         self.updated_at = updated_at or created_at
@@ -137,6 +141,7 @@ class Application:
         company_name: str = "",
         okved: str = "",
         consents: Iterable[Consent] = (),
+        authority: ApplicantAuthority | None = None,
     ) -> Self:
         _ensure_collateral_fits(form, product)
         return cls(
@@ -154,6 +159,7 @@ class Application:
             term_months=form.term_months,
             owner_guarantee=form.owner_guarantee,
             collateral=form.collateral,
+            authority=authority,
             created_at=now,
         )
 

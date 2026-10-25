@@ -40,8 +40,9 @@
 | 401 | `TOKEN_EXPIRED` | истёк `exp`, нужно войти заново |
 | 401 | `INVALID_CREDENTIALS` | неверный логин или пароль |
 | 403 | `FORBIDDEN` | роль не подходит или объект чужой |
-| 403 | `NOT_DIRECTOR` | пользователь не руководитель компании |
+| 403 | `NOT_DIRECTOR` | пользователь не руководитель компании, не сам ИП и не представитель с подтверждённой доверенностью. Если доверенность есть, но не прошла повторную проверку при подаче, ответ `422` с кодами `POA_*` |
 | 409 | `LOGIN_TAKEN` | при регистрации: логин уже занят (без учёта регистра) |
+| 409 | `INN_TAKEN` | при регистрации: аккаунт с этим ИНН физлица уже есть |
 | 404 | `NOT_FOUND` | объект не найден |
 | 409 | `INVALID_STATUS` | действие недоступно в текущем статусе |
 | 409 | `ACTIVE_APPLICATION_EXISTS` | по ИНН уже есть активная заявка |
@@ -66,7 +67,7 @@
 
 | Эндпоинт | Метод | Доступ | Запрос | Ответ | Ошибки |
 |---|---|---|---|---|---|
-| `/auth/register` | POST | П | `{login, password, full_name, passport: {series, number, issued_at}}` | `201 UserOut` | 409 `LOGIN_TAKEN`, 422 паспорт недействителен (`details[].code = PASSPORT_INVALID`) |
+| `/auth/register` | POST | П | `{login, password, full_name, inn, passport: {series, number, issued_at}}`, `inn` — 12 цифр ИНН физлица | `201 UserOut` | 409 `LOGIN_TAKEN`, 409 `INN_TAKEN`, 422 паспорт недействителен (`details[].code = PASSPORT_INVALID`), 422 неверные контрольные разряды ИНН (`details[].code = INN_INVALID`) |
 | `/auth/login` | POST | П | `{login, password}` | `200 LoginOut` | 401 `INVALID_CREDENTIALS` |
 | `/auth/me` | GET | К+А | без параметров | `200 UserOut` | 401 |
 
@@ -84,6 +85,7 @@
 | Эндпоинт | Метод | Доступ | Запрос | Ответ | Ошибки |
 |---|---|---|---|---|---|
 | `/companies/get` | POST | К+А | `{inn}` | `200 CompanyOut` | 404 ИНН не найден, 503 `SOURCE_UNAVAILABLE` |
+| `/companies/authority` | POST | К | `AuthorityIn` | `200 CompanyOut` | 403 `NOT_DIRECTOR` (нет доверенности или это ИП), 404 ИНН не найден, 422 доверенность не прошла (`details[].code` из таблицы ниже), 503 `SOURCE_UNAVAILABLE` (реестр доверенностей) |
 | `/consents/give` | POST | К | `{inn, types: ConsentType[]}` | `201 ConsentOut[]` | 403 `NOT_DIRECTOR` |
 | `/consents/list` | POST | К | `{inn}` | `200 ConsentOut[]` | |
 
@@ -99,9 +101,25 @@
 Компании и согласия:
 
 - `/companies/get` отдаёт данные ЕГРЮЛ/ЕГРИП любому клиенту: это открытый реестр, анкете они нужны для автоподтягивания
-  (SCOPE, раздел 3). Банковские данные (`has_account`, `annual_revenue`) приходят только руководителю компании и аналитику.
-  `can_apply` у клиента это «руководитель по ЕГРЮЛ или сам ИП», иначе `cannot_apply_reason`.
-  У аналитика `can_apply = false` и причина «Заявку подаёт клиент».
+  (SCOPE, раздел 3). Банковские данные (`has_account`, `annual_revenue`) приходят тем, кто может подать заявку, и аналитику.
+  `can_apply` у клиента это «руководитель по ЕГРЮЛ (сверка по ИНН физлица), сам ИП или представитель с подтверждённой
+  доверенностью», иначе `cannot_apply_reason`. `authority_required = true` значит: это ООО, и подать можно после
+  `/companies/authority`. У аналитика `can_apply = false` и причина «Заявку подаёт клиент».
+- `/companies/authority` проверяет МЧД (реестр ФНС) или нотариальную доверенность (реестр ФНП) и привязывает компанию
+  к пользователю с `basis = POWER_OF_ATTORNEY`. Директор по ЕГРЮЛ проходит как директор, что бы ни выбрал в `role`.
+  Доверенность ещё раз проверяется при `/applications/validate` и `/applications/submit`. Простая письменная доверенность
+  не принимается. Коды отказа (поле `authority.power_of_attorney`, кроме первого):
+
+  | Код | Когда |
+  |---|---|
+  | `NOT_DIRECTOR_BY_EGRUL` (поле `authority.role`) | выбрана роль `DIRECTOR`, но по ЕГРЮЛ руководитель другой |
+  | `POA_NOT_FOUND` | доверенности нет в реестре (для МЧД также при несовпадении ИНН доверителя или представителя) |
+  | `POA_REVOKED` | отозвана или отменена |
+  | `POA_EXPIRED` | `valid_until` раньше сегодняшней даты |
+  | `POA_WRONG_PRINCIPAL` | выдана другой компанией |
+  | `POA_NOT_SIGNED_BY_DIRECTOR` | подписал не действующий руководитель по ЕГРЮЛ |
+  | `POA_WRONG_REPRESENTATIVE` | выдана другому человеку (сверка по ИНН из аккаунта) |
+  | `POA_MISSING_POWER` | нет полномочия на подачу заявки или на подписание кредитного договора |
 - Согласия даются по ИНН до создания заявки и хранятся по паре «ИНН, пользователь». Повторное согласие того же типа
   не меняет `given_at`. После первого `/consents/give` компания появляется в `UserOut.companies`.
 
@@ -298,9 +316,10 @@ type ISODateTime = string; // "2026-10-24T12:31:00Z"
 
 ```ts
 interface UserOut {
-  id: string; role: Role; full_name: string; passport_verified: boolean;
+  id: string; role: Role; full_name: string; inn: string | null; passport_verified: boolean;
   // Компании, по которым пользователь давал согласия (/consents/give). У seed-учёток это их компания.
-  companies: { inn: string; name: string; kind: CompanyKind; is_director: boolean }[];
+  // basis: основание полномочий (SOLE_TRADER | DIRECTOR | POWER_OF_ATTORNEY), null у привязок до этой версии
+  companies: { inn: string; name: string; kind: CompanyKind; is_director: boolean; basis: AuthorityBasis | null }[];
 }
 
 interface LoginOut {
@@ -361,7 +380,29 @@ interface CompanyOut {
   has_account?: boolean;        // false: нужна выписка 1С. Только руководителю и аналитику
   annual_revenue?: Money;       // по оборотам за 12 мес, если счёт у нас. Только руководителю и аналитику
   can_apply: boolean;
-  cannot_apply_reason?: string; // "Подать может только руководитель"
+  cannot_apply_reason?: string; // "Подать заявку может руководитель компании, сам ИП или представитель…"
+  authority_required: boolean;  // ООО и клиент без полномочий: нужен /companies/authority
+  authority?: AuthorityOut;     // есть, когда can_apply у клиента
+}
+
+type ApplicantRole = 'DIRECTOR' | 'OWNER' | 'FINANCE_OFFICER' | 'FUNDING_OFFICER'
+  | 'BANKING_OFFICER' | 'OTHER_AUTHORIZED' | 'SOLE_TRADER';   // SOLE_TRADER выставляет сервер для ИП
+type AuthorityBasis = 'SOLE_TRADER' | 'DIRECTOR' | 'POWER_OF_ATTORNEY';
+
+interface AuthorityIn {
+  inn: string;
+  role: ApplicantRole;
+  power_of_attorney?:
+    | { kind: 'MCHD'; mchd_guid: string }
+    | { kind: 'NOTARIAL'; notarized_on: ISODate; register_number: string; notary_name: string };
+}
+
+interface AuthorityOut {
+  role: ApplicantRole;
+  basis: AuthorityBasis;
+  representative_name: string;
+  power_of_attorney?: string;   // реквизиты одной строкой
+  registered_founder?: boolean; // только для OWNER: есть ли заявитель среди учредителей по ЕГРЮЛ
 }
 
 interface ConsentOut { type: ConsentType; given_by: string; given_at: ISODateTime }
@@ -407,6 +448,7 @@ interface ApplicationOut {
   term_months: number;
   collateral?: { type: CollateralType; description: string; estimated_value: Money };
   owner_guarantee_consent?: boolean;
+  authority?: AuthorityOut;     // основание полномочий заявителя; обновляется при каждой проверке формы
   statements: StatementOut[];
   status: ApplicationStatus;
   status_label: string;          // "Контрпредложение"

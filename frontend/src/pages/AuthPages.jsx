@@ -53,7 +53,7 @@ export function LoginPage() {
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const [f, setF] = useState({ full_name: "", login: "", password: "", series: "", number: "", issued_at: "" });
+  const [f, setF] = useState({ full_name: "", inn: "", login: "", password: "", series: "", number: "", issued_at: "" });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const set = (k) => (v) => setF({ ...f, [k]: v });
@@ -63,6 +63,7 @@ export function RegisterPage() {
     const local = {};
     const issuedAt = parseDateNumeric(f.issued_at);
     if (f.full_name.trim().length < 3) local.full_name = "Укажите фамилию, имя и отчество";
+    if (!/^\d{12}$/.test(f.inn)) local.inn = "ИНН физлица — 12 цифр";
     if (!/^[A-Za-z0-9._@-]{3,64}$/.test(f.login.trim())) local.login = "Логин — от 3 символов: латиница, цифры, точка, _, @, -";
     if (f.password.length < 8) local.password = "Пароль — не короче 8 символов";
     if (!/^\d{4}$/.test(f.series) || !/^\d{6}$/.test(f.number)) local.passport = "Серия — 4 цифры, номер — 6 цифр";
@@ -71,11 +72,12 @@ export function RegisterPage() {
     if (Object.keys(local).length) return;
     setBusy(true);
     try {
-      await api.register({ login: f.login.trim(), password: f.password, full_name: f.full_name.trim(), passport: { series: f.series, number: f.number, issued_at: issuedAt } });
+      await api.register({ login: f.login.trim(), password: f.password, full_name: f.full_name.trim(), inn: f.inn, passport: { series: f.series, number: f.number, issued_at: issuedAt } });
       navigate("/login", { state: { login: f.login.trim() } });
     } catch (err) {
       const fe = fieldErrors(err);
-      if (err.status === 409) setErrors({ login: fe.login || "Логин занят" });
+      if (err.status === 409 && err.code === "INN_TAKEN") setErrors({ inn: err.message || "Аккаунт с этим ИНН уже есть" });
+      else if (err.status === 409) setErrors({ login: fe.login || "Логин занят" });
       else if (err.status === 422) {
         const passport = Object.entries(fe).find(([k]) => k.startsWith("passport"))?.[1];
         setErrors({ ...fe, passport: passport || (Object.keys(fe).length ? null : err.message || "Паспорт недействителен — проверьте серию, номер и дату выдачи") });
@@ -93,6 +95,7 @@ export function RegisterPage() {
         <Card>
           <form className="stack stack-4" onSubmit={submit} noValidate>
             <Field label="ФИО" value={f.full_name} onChange={set("full_name")} error={errors.full_name} inputProps={{ autoComplete: "name" }} />
+            <Field label="ИНН физлица" value={f.inn} onChange={(v) => set("inn")(v.replace(/\D/g, "").slice(0, 12))} error={errors.inn} hint="По нему банк сверяет вас с ЕГРЮЛ и доверенностью" inputProps={{ inputMode: "numeric" }} />
             <Field label="Логин" value={f.login} onChange={set("login")} error={errors.login} inputProps={{ autoComplete: "username" }} />
             <Field label="Пароль" value={f.password} onChange={set("password")} error={errors.password} inputProps={{ type: "password", autoComplete: "new-password" }} />
             <fieldset className="stack stack-4" style={{ border: 0, margin: 0, padding: "8px 0 0" }}>

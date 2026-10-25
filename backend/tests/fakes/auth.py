@@ -8,6 +8,7 @@ from app.api.v1.deps import Container
 from app.application.analyst_service import AnalystService
 from app.application.application_service import ApplicationService, StatementFiles
 from app.application.auth_service import AuthService
+from app.application.authority_service import AuthorityService
 from app.application.company_service import CompanyService
 from app.application.consent_service import ConsentService
 from app.application.contract_service import ContractDocuments, ContractService
@@ -25,6 +26,8 @@ from app.infra.documents import ReportlabContractRenderer
 from app.infra.mocks import (
     MockEgrulAdapter,
     MockFailures,
+    MockMchdAdapter,
+    MockNotaryPoaAdapter,
     MockPassportAdapter,
     MockSignatureAdapter,
     MockTurnoverAdapter,
@@ -67,11 +70,28 @@ def jwt_service(clock: Clock) -> JwtService:
     return JwtService(JWT_SECRET, TOKEN_TTL, clock)
 
 
+# ИНН физлиц из синтетики ЕГРЮЛ: директора сверяются по ИНН, поэтому тестовый пользователь
+# с ФИО директора получает и его ИНН.
+PERSON_INNS = {
+    "Петров Алексей Николаевич": "771401234587",
+    "Петрова Мария Сергеевна": "771402345674",
+    "Смирнова Ольга Викторовна": "770312345678",
+    "Соколов Дмитрий Андреевич": "770498765403",
+    "Иванова Елена Сергеевна": "770512345650",
+    "Кузнецов Игорь Валентинович": "770623456765",
+    "Лебедев Павел Олегович": "770734567870",
+    "Морозов Сергей Петрович": "771501234573",
+    "Васильева Анна Игоревна": "771502345660",
+    "Зуев Андрей Михайлович": "771601234560",
+}
+
+
 async def make_user(
     *,
     role: Role = Role.CLIENT,
     login: str = "client",
     full_name: str = "Петров Алексей Николаевич",
+    inn: str | None = None,
     password: str = PASSWORD,
     companies: tuple[UserCompany, ...] = (),
 ) -> User:
@@ -81,9 +101,20 @@ async def make_user(
         password_hash=await fast_hasher().hash(password),
         role=role,
         full_name=full_name,
+        inn=inn or (PERSON_INNS.get(full_name) if role is Role.CLIENT else None),
         passport_verified=True,
         created_at=NOW,
         companies=list(companies),
+    )
+
+
+def make_authority_service(
+    fixtures: SyntheticData, failures: MockFailures, clock: Clock
+) -> AuthorityService:
+    return AuthorityService(
+        mchd=MockMchdAdapter(fixtures, failures),
+        notary=MockNotaryPoaAdapter(fixtures, failures),
+        clock=clock,
     )
 
 
@@ -128,6 +159,7 @@ def make_container(
         url_ttl=timedelta(minutes=5),
     )
     contracts = ContractService(uow=uow, catalog=catalog, documents=documents, clock=clock)
+    authority = make_authority_service(fixtures, failures, clock)
     return Container(
         db_probe=StubProbe(),
         s3_probe=StubProbe(),
@@ -141,12 +173,14 @@ def make_container(
             clock=clock,
         ),
         consents=ConsentService(uow=uow, registry=registry, clock=clock),
-        companies=CompanyService(uow=uow, registry=registry, turnover=turnover),
+        companies=CompanyService(
+            uow=uow, registry=registry, turnover=turnover, authority=authority
+        ),
         applications=ApplicationService(
             uow=uow,
             catalog=catalog,
             registry=registry,
-            validator=FormValidator(catalog, registry, turnover),
+            validator=FormValidator(catalog, registry, turnover, authority),
             queue=queue,
             publisher=publisher,
             clock=clock,

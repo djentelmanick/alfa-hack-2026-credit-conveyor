@@ -22,6 +22,7 @@ from app.domain.entities import (
 )
 from app.domain.enums import (
     ApplicationStatus,
+    AuthorityBasis,
     CheckOutcome,
     CheckStage,
     CompanyKind,
@@ -242,6 +243,10 @@ class DataCollector:
         rosfin_hit = None
         if company is not None:
             names = [company.director, *(f.full_name for f in company.founders)]
+            authority = app.authority
+            # По 115-ФЗ банк идентифицирует и представителя клиента, а не только директора.
+            if authority is not None and authority.basis is AuthorityBasis.POWER_OF_ATTORNEY:
+                names.append(authority.representative_name)
             rosfin_hit = await fetcher.fetch(SourceType.ROSFIN, p.rosfin.is_listed(inn, names))
         else:
             # Перечень ищет по ФИО: проверка по одному ИНН дала бы ложное «не найдены».

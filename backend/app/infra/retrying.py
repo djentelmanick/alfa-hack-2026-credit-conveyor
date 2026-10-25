@@ -8,7 +8,10 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
+from datetime import date
+from uuid import UUID
 
+from app.domain.authority import PowerOfAttorney
 from app.domain.entities import Consent
 from app.domain.enums import KycLevel, SignatureStatus
 from app.domain.errors import SourceUnavailable
@@ -18,6 +21,8 @@ from app.domain.ports import (
     CbrKycPort,
     CompanyRegistryPort,
     CreditBureauPort,
+    MchdRegistryPort,
+    NotaryPoaRegistryPort,
     PassportCheckPort,
     RosfinmonitoringPort,
     SignatureVerifierPort,
@@ -133,3 +138,21 @@ class RetryingSignatureVerifier(RetryingGateway[SignatureVerifierPort], Signatur
 class RetryingPassportCheck(RetryingGateway[PassportCheckPort], PassportCheckPort):
     async def is_valid(self, series: str, number: str) -> bool:
         return await self._call("паспорт.is_valid", lambda p: p.is_valid(series, number))
+
+
+class RetryingMchdRegistry(RetryingGateway[MchdRegistryPort], MchdRegistryPort):
+    async def find(
+        self, guid: UUID, principal_inn: str, representative_inn: str
+    ) -> PowerOfAttorney | None:
+        return await self._call(
+            "МЧД.find", lambda p: p.find(guid, principal_inn, representative_inn)
+        )
+
+
+class RetryingNotaryPoaRegistry(RetryingGateway[NotaryPoaRegistryPort], NotaryPoaRegistryPort):
+    async def find(
+        self, notarized_on: date, register_number: str, notary_name: str
+    ) -> PowerOfAttorney | None:
+        return await self._call(
+            "ФНП.find", lambda p: p.find(notarized_on, register_number, notary_name)
+        )
