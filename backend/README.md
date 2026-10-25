@@ -42,6 +42,9 @@ MinIO запускается из образов `pgsty/minio` и `pgsty/mc`: о
 | `sokolov` | CLIENT | Соколов Дмитрий Андреевич | ИП Соколов, 770498765403 | 3, контрпредложение |
 | `ivanova` | CLIENT | Иванова Елена Сергеевна | ИП Иванова, 770512345650 | 4, дозапрос выписки |
 | `techprom` | CLIENT | Кузнецов Игорь Валентинович | ООО «Техпром», 7704123450 | 5, ручная проверка |
+| `buh` | CLIENT | Васильева Анна Игоревна, бухгалтер по МЧД | ООО «Хлебный двор», 7715012342 | представитель, одобрение |
+| `petrova` | CLIENT | собственник 30% по нотариальной доверенности | ООО «Пекарня Петровых», 7716012345 | представитель, одобрение |
+| `lebedev` | CLIENT | учредитель 30%, МЧД без права подписи | ООО «Техпром», 7704123450 | представитель, отказ на шаге доверенности |
 | `analyst` | ANALYST | Орлова Мария Игоревна | | |
 
 ## Как пройти сценарии на демо
@@ -50,20 +53,17 @@ MinIO запускается из образов `pgsty/minio` и `pgsty/mc`: о
 затем кнопка Authorize с `access_token`. Статусы заявки приходят по WebSocket `/api/v1/ws/applications`
 (JWT в `Sec-WebSocket-Protocol: bearer, <token>`), в Swagger их удобно смотреть через `POST /applications/get`.
 
-**Модель скоринга пока не подключена** (её добавит коллега, `docs/BACKEND_SPEC.md` раздел 7). Поэтому в живом
-приложении каждая заявка, прошедшая проверки, уходит в `MANUAL_REVIEW` с причиной `SCORING_NOT_IMPLEMENTED`,
-и решение принимает аналитик. В e2e-тестах вместо заглушки стоит `FixedScoringEngine` с баллами из SCOPE,
-и там сценарии идут ровно по таблице SCOPE раздел 12.
+Скоринг считает `ScoringEngine` (10 факторов, классы A–D, `docs/BACKEND_SPEC.md` раздел 7), поэтому сценарии идут ровно по таблице SCOPE раздел 12. Те же шаги с готовыми телами запросов собраны в коллекции `docs/credit-conveyor.postman_collection.json`, описание сценариев в `../docs/TEST_SCENARIOS.md`.
 
 Общий шаг клиента: `POST /consents/give` (ООО: `BKI_COMPANY`, `BKI_PERSONAL`, `PERSONAL_DATA`; ИП: без `BKI_COMPANY`),
 `POST /applications/create`, `POST /applications/submit`.
 
 | # | Логин | Заявка | Что происходит | Что сделать дальше |
 |---|---|---|---|---|
-| 1 | `kolos` | `LUMP_SUM`, `UNSECURED`, `2000000.00`, 12 мес, `DEVELOPMENT`, `owner_guarantee_consent: true` | проверки пройдены, `MANUAL_REVIEW` | аналитик `approve` со ставкой `23.5`; клиент `accept`, `signing/code`, `signing/confirm`: договор |
+| 1 | `kolos` | `LUMP_SUM`, `UNSECURED`, `2000000.00`, 12 мес, `DEVELOPMENT`, `owner_guarantee_consent: true` | `APPROVED`, класс A, ставка `23.5` | клиент `accept`, `signing/code`, `signing/confirm`: договор |
 | 2 | `romashka` | `LUMP_SUM`, `UNSECURED`, `1000000.00`, 12 мес | `CHECKING`, затем `REJECTED`: стоп-фактор `COMPANY_INACTIVE` (ликвидирована) | ничего, это конечный исход |
-| 3 | `sokolov` | `LUMP_SUM`, `UNSECURED`, `4500000.00`, 24 мес | `MANUAL_REVIEW` | аналитик `counter-offer`: `3600000.00` без залога и `4500000.00` с залогом, ставка `26.5`; клиент `accept` с `offer_id` варианта без залога, затем подписание |
-| 4 | `ivanova` | `LUMP_SUM`, `UNSECURED`, `3000000.00`, 24 мес; выписка `ivanova_4m.txt` | `NEEDS_INFO`: выписка короче 6 месяцев | загрузить `ivanova_12m_signed.txt`, снова `submit`; дальше `MANUAL_REVIEW`, аналитик одобряет по `26.5` |
+| 3 | `sokolov` | `LUMP_SUM`, `UNSECURED`, `4500000.00`, 24 мес | `COUNTER_OFFER`, класс B: `3600000.00` без залога и `4500000.00` с залогом, ставка `26.5` | клиент `accept` с `offer_id` варианта без залога, затем подписание |
+| 4 | `ivanova` | `LUMP_SUM`, `UNSECURED`, `3000000.00`, 24 мес; выписка `ivanova_4m.txt` | `NEEDS_INFO`: выписка короче 6 месяцев | загрузить `ivanova_12m_signed.txt`, снова `submit`; дальше `APPROVED`, класс B, `26.5` |
 | 5 | `techprom` | `REVOLVING_LINE`, `SECURED`, `12000000.00`, 60 мес, `REGULAR_PURCHASES`, залог `REAL_ESTATE` на `9000000.00` | `MANUAL_REVIEW`: залог и сумма больше 5 млн | аналитик `approve` по `23` с комментарием; клиент подписывает: открыт лимит |
 
 Выписки сценария 4 лежат в `app/infra/mocks/data/statements/` и загружаются через
@@ -128,7 +128,7 @@ uv run mypy app
 `http://localhost:9000`, ключи `TEST_S3_ACCESS_KEY` и `TEST_S3_SECRET_KEY`, по умолчанию `minioadmin`) и пишут
 в отдельные бакеты `credit-files-test` и `credit-contracts-test`, которые создают сами.
 
-Новая зависимость: `uv add <пакет>` (или `uv add --dev`), затем строка в `THIRD_PARTY_NOTICES.md`.
+Новая зависимость: `uv add <пакет>` (или `uv add --dev`), затем строка в `THIRD_PARTY_NOTICES.md` в корне репозитория.
 
 ## Переменные окружения
 
@@ -143,6 +143,10 @@ uv run mypy app
 | `S3_REGION` | `us-east-1` | регион S3 |
 | `S3_BUCKET_FILES` | `credit-files` | бакет выписок |
 | `S3_BUCKET_CONTRACTS` | `credit-contracts` | бакет договоров |
+| `RABBITMQ_URL` | обязательная | подключение к RabbitMQ, `amqp://...` (api и worker) |
+| `WORKER_PREFETCH` | `4` | сколько задач один worker обрабатывает одновременно |
+| `RECONCILE_INTERVAL_SEC` | `30` | как часто reconciler ищет зависшие заявки |
+| `PIPELINE_STALE_AFTER_SEC` | `120` | через сколько секунд без смены статуса заявка в конвейере считается зависшей |
 | `PRESIGNED_TTL_SECONDS` | `300` | время жизни ссылки на файл |
 | `MAX_UPLOAD_MB` | `10` | лимит выписки |
 | `PIPELINE_STEP_DELAY_MS` | `800` | пауза на шаге конвейера |
