@@ -50,7 +50,7 @@ CHECK_TITLES: Mapping[str, str] = {
     "FORM_COMPLETE": "Анкета заполнена полностью",
     "PURPOSE_ALLOWED": "Продукт подходит под цель",
     "TERMS_IN_RANGE": "Сумма и срок в границах продукта",
-    "APPLICANT_IS_DIRECTOR": "Руководитель по ЕГРЮЛ и ФИО из аккаунта",
+    "APPLICANT_AUTHORITY": "Полномочия заявителя: руководитель по ЕГРЮЛ или доверенность",
     "NO_ACTIVE_APPLICATION": "Нет другой активной заявки по ИНН",
     "COLLATERAL_COVERAGE": "Оценка залога и порог покрытия",
     "OWNER_GUARANTEE": "Согласие собственника на поручительство",

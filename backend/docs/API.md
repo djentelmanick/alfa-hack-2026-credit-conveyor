@@ -40,7 +40,7 @@
 | 401 | `TOKEN_EXPIRED` | истёк `exp`, нужно войти заново |
 | 401 | `INVALID_CREDENTIALS` | неверный логин или пароль |
 | 403 | `FORBIDDEN` | роль не подходит или объект чужой |
-| 403 | `NOT_DIRECTOR` | пользователь не руководитель компании, не сам ИП и не представитель с подтверждённой доверенностью |
+| 403 | `NOT_DIRECTOR` | пользователь не руководитель компании, не сам ИП и не представитель с подтверждённой доверенностью. Если доверенность есть, но не прошла повторную проверку при подаче, ответ `422` с кодами `POA_*` |
 | 409 | `LOGIN_TAKEN` | при регистрации: логин уже занят (без учёта регистра) |
 | 409 | `INN_TAKEN` | при регистрации: аккаунт с этим ИНН физлица уже есть |
 | 404 | `NOT_FOUND` | объект не найден |
@@ -448,6 +448,7 @@ interface ApplicationOut {
   term_months: number;
   collateral?: { type: CollateralType; description: string; estimated_value: Money };
   owner_guarantee_consent?: boolean;
+  authority?: AuthorityOut;     // основание полномочий заявителя; обновляется при каждой проверке формы
   statements: StatementOut[];
   status: ApplicationStatus;
   status_label: string;          // "Контрпредложение"

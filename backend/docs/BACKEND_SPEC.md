@@ -702,7 +702,7 @@ AuthenticityStrategy <|.. FnsRevenueReconciliationStrategy
 ### Этап 1. Форма (`FormValidator`, до отправки, синхронно)
 
 Ошибки полей возвращаются разом как `422 VALIDATION_ERROR` с `details` по полям. Исключения по `docs/API.md`:
-`APPLICANT_IS_DIRECTOR` даёт `403 NOT_DIRECTOR`, `NO_ACTIVE_APPLICATION` даёт `409 ACTIVE_APPLICATION_EXISTS`.
+`APPLICANT_AUTHORITY` без каких-либо оснований даёт `403 NOT_DIRECTOR`, отказ по доверенности — `422` с кодами `POA_*`, `NO_ACTIVE_APPLICATION` даёт `409 ACTIVE_APPLICATION_EXISTS`.
 В конвейер такая заявка не попадает. Для ИП `CONSENTS_GIVEN` принимает одно согласие БКИ любого типа плюс ПДн.
 
 | Код проверки | Условие | Источник |
@@ -710,7 +710,7 @@ AuthenticityStrategy <|.. FnsRevenueReconciliationStrategy
 | `FORM_COMPLETE` | все обязательные поля есть и в верном формате | анкета |
 | `TERMS_IN_RANGE` | сумма и срок в границах варианта из `products.yaml` | `LoanProduct.validate_terms` |
 | `PURPOSE_ALLOWED` | продукт допустим для цели (ВКЛ только для оборотных средств) | `products.yaml` |
-| `APPLICANT_IS_DIRECTOR` | пользователь из JWT это руководитель по ЕГРЮЛ или сам ИП | аккаунт + мок ЕГРЮЛ |
+| `APPLICANT_AUTHORITY` | пользователь из JWT это руководитель по ЕГРЮЛ (по ИНН физлица), сам ИП или представитель по действующей МЧД или нотариальной доверенности с обоими полномочиями | аккаунт + мок ЕГРЮЛ + моки реестров МЧД и ФНП |
 | `NO_ACTIVE_APPLICATION` | нет другой активной заявки по ИНН | репозиторий |
 | `COLLATERAL_COVERAGE` | для залога оценка не меньше 50% суммы | анкета |
 | `OWNER_GUARANTEE` | для ООО без залога дано согласие собственника | анкета |

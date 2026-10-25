@@ -12,6 +12,7 @@ from app.domain.enums import CheckOutcome, CompanyKind, ConsentType, Purpose, Ro
 from app.domain.errors import ActiveApplicationExists, NotDirector, ValidationFailed
 from app.domain.products import ProductCatalog
 from app.infra.mocks import MockEgrulAdapter, MockFailures, MockTurnoverAdapter, SyntheticData
+from tests.fakes.auth import FixedClock, make_authority_service
 from tests.fakes.context import make_application, make_collateral, make_statement
 from tests.fakes.repositories import InMemoryApplicationRepository
 from tests.fakes.scenarios import IVANOVA, KOLOS, NOW
@@ -35,7 +36,10 @@ def catalog() -> ProductCatalog:
 def validator(fixtures: SyntheticData, catalog: ProductCatalog) -> FormValidator:
     failures = MockFailures()
     return FormValidator(
-        catalog, MockEgrulAdapter(fixtures, failures), MockTurnoverAdapter(fixtures, failures)
+        catalog,
+        MockEgrulAdapter(fixtures, failures),
+        MockTurnoverAdapter(fixtures, failures),
+        make_authority_service(fixtures, failures, FixedClock()),
     )
 
 
@@ -116,7 +120,7 @@ async def test_valid_application_passes_every_check(
         "FORM_COMPLETE",
         "TERMS_IN_RANGE",
         "PURPOSE_ALLOWED",
-        "APPLICANT_IS_DIRECTOR",
+        "APPLICANT_AUTHORITY",
         "NO_ACTIVE_APPLICATION",
         "COLLATERAL_COVERAGE",
         "OWNER_GUARANTEE",

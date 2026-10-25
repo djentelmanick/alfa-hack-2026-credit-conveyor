@@ -290,7 +290,7 @@ def build_container(
             uow=uow,
             catalog=catalog,
             registry=registry,
-            validator=FormValidator(catalog, registry, turnover),
+            validator=FormValidator(catalog, registry, turnover, authority),
             queue=queue,
             publisher=publisher,
             clock=clock,
