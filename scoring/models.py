@@ -61,6 +61,7 @@ class FactorResult:
     max_points: int
     value: str
     description: str
+    explanation: str
 
 
 @dataclass(frozen=True)

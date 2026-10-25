@@ -73,12 +73,20 @@ def _business_age(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         points = cfg.age_mid_points
     else:
         points = cfg.age_young_points
+    if months >= cfg.age_mid_months:
+        explanation = "Бизнесу больше 3 лет"
+    elif months >= cfg.age_young_months:
+        explanation = "Бизнесу от 1 до 3 лет"
+    else:
+        explanation = "Бизнесу меньше 1 года"
+
     return FactorResult(
         name="business_age",
         points=points,
         max_points=cfg.age_mature_points,
         value=f"{months} мес.",
         description="Возраст бизнеса",
+        explanation=explanation,
     )
 
 
@@ -99,10 +107,13 @@ def _debt_load(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
 
     if ratio < cfg.debt_low_pct:
         points = cfg.debt_low_points
+        explanation = "Низкая долговая нагрузка"
     elif ratio <= cfg.debt_high_pct:
         points = cfg.debt_mid_points
+        explanation = "Умеренная долговая нагрузка"
     else:
         points = cfg.debt_high_points
+        explanation = "Высокая долговая нагрузка"
 
     return FactorResult(
         name="debt_load",
@@ -110,6 +121,7 @@ def _debt_load(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         max_points=cfg.debt_low_points,
         value=f"{pct}%",
         description="Долговая нагрузка",
+        explanation=explanation,
     )
 
 
@@ -125,10 +137,13 @@ def _loan_to_revenue(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
 
     if ratio < cfg.ltr_low_pct:
         points = cfg.ltr_low_points
+        explanation = "Сумма заявки значительно меньше годовой выручки"
     elif ratio <= cfg.ltr_high_pct:
         points = cfg.ltr_mid_points
+        explanation = "Сумма заявки соразмерна годовой выручке"
     else:
         points = cfg.ltr_high_points
+        explanation = "Сумма заявки превышает половину годовой выручки"
 
     return FactorResult(
         name="loan_to_revenue",
@@ -136,6 +151,7 @@ def _loan_to_revenue(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         max_points=cfg.ltr_low_points,
         value=f"{pct}%",
         description="Сумма заявки / годовая выручка",
+        explanation=explanation,
     )
 
 
@@ -153,12 +169,19 @@ def _credit_history(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         CreditHistoryStatus.MINOR_OVERDUE: "закрытые просрочки до 30 дней",
         CreditHistoryStatus.MAJOR_OVERDUE: "просрочки более 30 дней или текущая до 30 дней",
     }
+    explanations = {
+        CreditHistoryStatus.CLEAN: "Чистая кредитная история",
+        CreditHistoryStatus.NO_HISTORY: "Кредитная история отсутствует",
+        CreditHistoryStatus.MINOR_OVERDUE: "Были небольшие просрочки за последний год",
+        CreditHistoryStatus.MAJOR_OVERDUE: "Были серьёзные просрочки за последний год",
+    }
     return FactorResult(
         name="credit_history",
         points=points_map[status],
         max_points=cfg.credit_clean_points,
         value=labels[status],
         description="Кредитная история",
+        explanation=explanations[status],
     )
 
 
@@ -170,6 +193,7 @@ def _closed_credits(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         max_points=cfg.closed_credits_yes_points,
         value="есть" if has else "нет",
         description="Закрытые кредиты без просрочек",
+        explanation="Есть успешно закрытые кредиты" if has else "Нет закрытых кредитов",
     )
 
 
@@ -185,12 +209,18 @@ def _industry_risk(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         IndustryRisk.MEDIUM: "средний",
         IndustryRisk.HIGH: "высокий",
     }
+    explanations = {
+        IndustryRisk.LOW: "Отрасль с низким уровнем риска",
+        IndustryRisk.MEDIUM: "Отрасль со средним уровнем риска",
+        IndustryRisk.HIGH: "Отрасль с высоким уровнем риска",
+    }
     return FactorResult(
         name="industry_risk",
         points=points_map[risk],
         max_points=cfg.industry_low_points,
         value=f"{labels[risk]} ({inp.okved_code})",
         description="Отраслевой риск",
+        explanation=explanations[risk],
     )
 
 
@@ -202,6 +232,7 @@ def _revenue_dynamics(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
             max_points=0,
             value="недостаточно данных",
             description="Динамика выручки",
+            explanation="Недостаточно данных для оценки динамики",
         )
 
     if inp.prev_2q_revenue <= 0:
@@ -211,6 +242,7 @@ def _revenue_dynamics(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
             max_points=0,
             value="нет базы для сравнения",
             description="Динамика выручки",
+            explanation="Недостаточно данных для оценки динамики",
         )
 
     change = (inp.last_2q_revenue - inp.prev_2q_revenue) / inp.prev_2q_revenue
@@ -219,8 +251,10 @@ def _revenue_dynamics(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
 
     if drop > float(cfg.revenue_drop_pct):
         points = cfg.revenue_drop_points
+        explanation = "Выручка значительно снизилась"
     else:
         points = cfg.revenue_ok_points
+        explanation = "Выручка стабильна или растёт"
 
     return FactorResult(
         name="revenue_dynamics",
@@ -228,6 +262,7 @@ def _revenue_dynamics(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         max_points=0,
         value=f"{pct:+}%",
         description="Динамика выручки",
+        explanation=explanation,
     )
 
 
@@ -239,6 +274,7 @@ def _mass_address(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         max_points=0,
         value="да" if hit else "нет",
         description="Адрес массовой регистрации",
+        explanation="Адрес массовой регистрации" if hit else "Адрес не массовый",
     )
 
 
@@ -250,6 +286,7 @@ def _mass_director(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         max_points=0,
         value="да" if hit else "нет",
         description="Массовый руководитель или учредитель",
+        explanation="Руководитель или учредитель является массовым" if hit else "Руководитель и учредитель не массовые",
     )
 
 
@@ -262,4 +299,5 @@ def _credit_inquiries(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         max_points=0,
         value=str(count),
         description="Обращения за кредитами за 3 месяца",
+        explanation="Частые обращения за кредитами" if over else "Нет частых обращений за кредитами",
     )
