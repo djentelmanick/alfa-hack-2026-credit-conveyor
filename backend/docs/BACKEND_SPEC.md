@@ -920,7 +920,7 @@ DecisionRule <|-- ClassCCounterOfferRule
 | 3 | `RevenueLimitCounterOfferRule` | класс A или B и сумма больше лимита от выручки для варианта | `COUNTER_OFFER`: сумма в пределах лимита без залога, плюс запрошенная сумма с залогом, если она укладывается в лимит варианта с залогом |
 | 4 | `ClassAApproveRule` | класс A | `APPROVED` на запрошенных условиях |
 | 5 | `ClassBApproveRule` | класс B | `APPROVED` на запрошенных условиях |
-| 6 | `ClassCCounterOfferRule` | класс C | `COUNTER_OFFER`: та же сумма на максимальный срок варианта (если запрошен меньший) и та же сумма с залогом (если запрошен вариант без залога) |
+| 6 | `ClassCCounterOfferRule` | класс C | `COUNTER_OFFER` с условиями, при которых `ScoringModel` даёт класс B или выше: максимальная сумма (шаг 100 000 ₽, не выше лимита от выручки) на запрошенный срок и минимальный срок на запрошенную сумму. Ставка по новому классу |
 
 - `rule_code` в `Decision`: `MANUAL_REVIEW`, `CLASS_D_REJECT`, `REVENUE_LIMIT_COUNTER_OFFER`, `CLASS_A_APPROVE`,
   `CLASS_B_APPROVE`, `CLASS_C_COUNTER_OFFER`. Порядок задаёт `order` правила, а не позиция в списке; повтор `order` это ошибка.
@@ -928,6 +928,9 @@ DecisionRule <|-- ClassCCounterOfferRule
   варианта своя ставка по классу (сценарий 3: 26,5% без залога, 24,5% с залогом), `Decision.rate` равна ставке первого варианта.
 - `MANUAL_REVIEW`: в `Decision.rate` ставка по классу как подсказка аналитику (для D её нет).
 - `REJECTED` по классу D: в `reasons` коды факторов с отрицательными баллами, худший первым (или `RISK_CLASS_D`).
+  Антифрод-факторы (`FactorScore.client_visible = False`) в `reasons` не попадают.
+- `ClassCCounterOfferRule` получает `ScoringModel` в конструкторе и пересчитывает скоринг для кандидатов
+  на копии заявки; `default_decision_rules(catalog, rates, scoring)`.
 - Если ни один вариант контрпредложения не проходит границы сумм продукта, решение `MANUAL_REVIEW`
   с причиной `NO_COUNTER_OFFER_AVAILABLE`: одобрять запрошенное правило не вправе.
 - После ручной проверки ставку назначает аналитик в пределах диапазона варианта, по умолчанию подставляется ставка по классу.

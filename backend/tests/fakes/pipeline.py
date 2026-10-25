@@ -76,7 +76,7 @@ def make_pipeline(
         verifier=verifier,
         scoring=scoring,
         decision=DecisionEngine(
-            default_decision_rules(catalog, RatePolicy()), default_manual_review_triggers()
+            default_decision_rules(catalog, RatePolicy(), scoring), default_manual_review_triggers()
         ),
         publisher=publisher,
         lock=lock or InMemoryPipelineLock(),

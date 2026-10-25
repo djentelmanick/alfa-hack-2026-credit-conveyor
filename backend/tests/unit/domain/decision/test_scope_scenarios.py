@@ -58,7 +58,7 @@ def scoring() -> FixedScoringEngine:
 @pytest.fixture
 def run(catalog: ProductCatalog, scoring: FixedScoringEngine) -> Runner:
     engine = DecisionEngine(
-        default_decision_rules(catalog, RatePolicy()), default_manual_review_triggers()
+        default_decision_rules(catalog, RatePolicy(), scoring), default_manual_review_triggers()
     )
     verifier = StatementVerifier(default_authenticity_strategies())
 

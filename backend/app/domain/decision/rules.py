@@ -2,6 +2,8 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
+from copy import copy
+from dataclasses import replace
 from decimal import Decimal
 from typing import ClassVar
 from uuid import uuid4
@@ -12,6 +14,7 @@ from app.domain.entities import Decision, OfferOption
 from app.domain.enums import DecisionOutcome, RiskClass, Variant
 from app.domain.products import LoanProduct, ProductCatalog
 from app.domain.products.config import VariantConfig
+from app.domain.scoring.model import ScoringModel
 from app.domain.scoring.result import ScoringResult
 from app.domain.value_objects import Money
 
@@ -132,7 +135,10 @@ class ClassDRejectRule(DecisionRule):
     def apply(
         self, ctx: PipelineContext, scoring: ScoringResult, reasons: Sequence[str]
     ) -> Decision:
-        negative = sorted((f for f in scoring.factors if f.points < 0), key=lambda f: f.points)
+        negative = sorted(
+            (f for f in scoring.factors if f.points < 0 and f.client_visible),
+            key=lambda f: f.points,
+        )
         key_factors = tuple(f.code for f in negative) or ("RISK_CLASS_D",)
         return self._decision(ctx, DecisionOutcome.REJECTED, rate=None, reasons=key_factors)
 
@@ -200,10 +206,19 @@ class ClassBApproveRule(_ApproveRule):
 
 
 class ClassCCounterOfferRule(DecisionRule):
-    """Та же сумма на максимальный срок варианта или та же сумма с залогом."""
+    """Подбирает условия, при которых скоринг даёт класс B или выше.
+
+    Два варианта: максимальная сумма на запрошенный срок и минимальный срок на запрошенную сумму.
+    Банк сам называет, на что готов, а не заставляет клиента угадывать.
+    """
 
     order = 6
     code = "CLASS_C_COUNTER_OFFER"
+    AMOUNT_STEP = Money.of("100000")
+
+    def __init__(self, catalog: ProductCatalog, rates: RatePolicy, scoring: ScoringModel) -> None:
+        super().__init__(catalog, rates)
+        self._scoring = scoring
 
     def matches(self, ctx: PipelineContext, scoring: ScoringResult, reasons: Sequence[str]) -> bool:
         return scoring.risk_class is RiskClass.C
@@ -211,28 +226,63 @@ class ClassCCounterOfferRule(DecisionRule):
     def apply(
         self, ctx: PipelineContext, scoring: ScoringResult, reasons: Sequence[str]
     ) -> Decision:
+        return self._counter_offer(ctx, [self._lower_amount(ctx), self._longer_term(ctx)])
+
+    def _lower_amount(self, ctx: PipelineContext) -> OfferOption | None:
         application = ctx.application
         terms = self._terms(ctx)
-        offers: list[OfferOption | None] = []
-        if application.term_months < terms.term_max:
-            offers.append(
-                self._offer(ctx, scoring, application.variant, application.amount, terms.term_max)
-            )
-        if application.variant is Variant.UNSECURED:
-            offers.append(
-                self._offer(
-                    ctx, scoring, Variant.SECURED, application.amount, application.term_months
-                )
-            )
-        return self._counter_offer(ctx, offers)
+        limit = self._product(ctx).revenue_limit(application.variant, ctx.annual_revenue())
+        amount = _round_down(min(application.amount, limit), self.AMOUNT_STEP)
+        if amount == application.amount:
+            amount = amount - self.AMOUNT_STEP
+        while amount >= terms.min_amount:
+            offer = self._offer_if_upgraded(ctx, amount, application.term_months)
+            if offer is not None:
+                return offer
+            amount = amount - self.AMOUNT_STEP
+        return None
+
+    def _longer_term(self, ctx: PipelineContext) -> OfferOption | None:
+        application = ctx.application
+        limit = self._product(ctx).revenue_limit(application.variant, ctx.annual_revenue())
+        if application.amount > limit:
+            return None
+        for term in range(application.term_months + 1, self._terms(ctx).term_max + 1):
+            offer = self._offer_if_upgraded(ctx, application.amount, term)
+            if offer is not None:
+                return offer
+        return None
+
+    def _offer_if_upgraded(
+        self, ctx: PipelineContext, amount: Money, term_months: int
+    ) -> OfferOption | None:
+        candidate = _with_terms(ctx, amount, term_months)
+        rescored = self._scoring.score(candidate)
+        if rescored.risk_class not in (RiskClass.A, RiskClass.B):
+            return None
+        return self._offer(ctx, rescored, ctx.application.variant, amount, term_months)
 
 
-def default_decision_rules(catalog: ProductCatalog, rates: RatePolicy) -> list[DecisionRule]:
+def _round_down(amount: Money, step: Money) -> Money:
+    return Money.of((amount.amount // step.amount) * step.amount)
+
+
+def _with_terms(ctx: PipelineContext, amount: Money, term_months: int) -> PipelineContext:
+    # Копия, чтобы пересчёт «что если» не менял саму заявку.
+    application = copy(ctx.application)
+    application.amount = amount
+    application.term_months = term_months
+    return replace(ctx, application=application)
+
+
+def default_decision_rules(
+    catalog: ProductCatalog, rates: RatePolicy, scoring: ScoringModel
+) -> list[DecisionRule]:
     return [
         ManualReviewRule(catalog, rates),
         ClassDRejectRule(catalog, rates),
         RevenueLimitCounterOfferRule(catalog, rates),
         ClassAApproveRule(catalog, rates),
         ClassBApproveRule(catalog, rates),
-        ClassCCounterOfferRule(catalog, rates),
+        ClassCCounterOfferRule(catalog, rates, scoring),
     ]
