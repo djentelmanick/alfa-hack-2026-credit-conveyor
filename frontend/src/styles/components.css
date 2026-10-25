@@ -21,6 +21,8 @@
 .ck-field__control{position:relative;display:flex;align-items:center;height:var(--control-height);background:var(--surface-card);border:1px solid var(--line);border-radius:var(--radius-sm);transition:box-shadow var(--duration-fast)}
 .ck-field__control:focus-within,.ck-field__control.is-focus{box-shadow:var(--focus-ring)}
 .ck-field__input{flex:1;min-width:0;height:100%;margin:0;border:0;background:transparent;padding:0 var(--space-4);font:var(--text-body);color:var(--ink);outline:none;border-radius:var(--radius-sm);appearance:none;-webkit-appearance:none}
+/* Рамку фокуса рисует .ck-field__control, иначе глобальный :focus-visible даёт вторую поверх инпута */
+.ck-field__input:focus-visible{box-shadow:none}
 .ck-field__input--num{font-variant-numeric:tabular-nums}
 .ck-field__input::placeholder{color:var(--ink-muted)}
 select.ck-field__input{padding-right:48px;cursor:pointer}
@@ -227,7 +229,8 @@ select.ck-field__input{padding-right:48px;cursor:pointer}
 .ck-row__chev{grid-column:3;grid-row:1}
 }
 
-.ck-tabs{display:flex;gap:var(--space-6);border-bottom:1px solid var(--line);overflow-x:auto}
+.ck-tabs{display:flex;gap:var(--space-6);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.ck-tabs::-webkit-scrollbar{display:none}
 .ck-tab{display:inline-grid;height:var(--control-height);align-items:center;padding:0;margin-bottom:-1px;border:0;border-bottom:2px solid transparent;background:none;font:var(--text-body);color:var(--ink-muted);cursor:pointer;white-space:nowrap;border-radius:0}
 .ck-tab::after{content:attr(data-label);font-weight:600;visibility:hidden;height:0;overflow:hidden}
 .ck-tab:hover{color:var(--ink)}

@@ -13,6 +13,7 @@ from app.domain.errors import (
     NotFound,
     ValidationFailed,
 )
+from app.domain.labels import APPLICATION_STATUS_LABELS, CONSENT_TYPE_LABELS
 from app.domain.ports import AccountTurnoverPort, ApplicationRepository, CompanyRegistryPort
 from app.domain.products import LoanProduct, ProductCatalog
 
@@ -69,7 +70,7 @@ class FormValidator:
         checks = [
             self._form_complete(application),
             *self._terms_in_range(application, product),
-            self._purpose_allowed(application),
+            self._purpose_allowed(application, product),
             director,
             active,
             self._collateral_coverage(application, product),
@@ -128,7 +129,7 @@ class FormValidator:
             for result, field in ((amount_check, "amount"), (term_check, "term_months"))
         ]
 
-    def _purpose_allowed(self, application: Application) -> _Check:
+    def _purpose_allowed(self, application: Application, product: LoanProduct) -> _Check:
         allowed = self._catalog.is_allowed(application.purpose, application.product_code)
         errors = (
             ()
@@ -141,8 +142,8 @@ class FormValidator:
         )
         return _check(
             "PURPOSE_ALLOWED",
-            f"продукт допустим для цели {application.purpose}",
-            application.product_code,
+            f"продукт допустим для цели «{self._catalog.purpose_label(application.purpose)}»",
+            product.name,
             errors,
         )
 
@@ -175,7 +176,7 @@ class FormValidator:
         return _check(
             "NO_ACTIVE_APPLICATION",
             "нет другой активной заявки",
-            f"заявка {existing.id} в статусе {existing.status}",
+            f"заявка {existing.id} в статусе «{APPLICATION_STATUS_LABELS[existing.status]}»",
             (FieldError("inn", "NO_ACTIVE_APPLICATION", ActiveApplicationExists.default_message),),
         )
 
@@ -240,7 +241,7 @@ class FormValidator:
             ok = ConsentType.PERSONAL_DATA in given and bool(
                 given & {ConsentType.BKI_COMPANY, ConsentType.BKI_PERSONAL}
             )
-        actual = ", ".join(sorted(given)) or "нет согласий"
+        actual = ", ".join(CONSENT_TYPE_LABELS[c] for c in sorted(given)) or "нет согласий"
         errors = () if ok else (FieldError("consents", "CONSENTS_GIVEN", "Дайте все согласия"),)
         return _check("CONSENTS_GIVEN", expected, actual, errors)
 

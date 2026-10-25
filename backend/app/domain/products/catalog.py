@@ -63,6 +63,9 @@ class ProductCatalog:
     def for_purpose(self, purpose: Purpose) -> list[LoanProduct]:
         return [self._products[code] for code in self.config.purposes[purpose].products]
 
+    def purpose_label(self, purpose: Purpose) -> str:
+        return self.config.purposes[purpose].label
+
     def is_allowed(self, purpose: Purpose, product_code: str) -> bool:
         return product_code in self.config.purposes[purpose].products
 
