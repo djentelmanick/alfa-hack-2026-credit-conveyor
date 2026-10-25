@@ -4,10 +4,17 @@ import { Button, Card, Checkbox, Field, FileUpload, FormError, Icon, Money, Note
 import { api, errorText, fieldErrors } from "../api/index.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useResource } from "../lib/hooks.js";
-import { formatDateNumeric, formatMoney, formatRate } from "../lib/format.js";
+import { formatDateNumeric, formatMoney, formatRate, parseDateNumeric } from "../lib/format.js";
 import { annuityPayment } from "../lib/payment.js";
-import { CONSENT_LABELS, isSoleTrader, productName, shortId, variantName } from "../lib/labels.js";
+import { APPLICANT_ROLES, CONSENT_LABELS, REPRESENTATIVE_CONSENT_LABELS, isRepresentative, isSoleTrader, productName, roleName, shortId, variantName } from "../lib/labels.js";
 import { PageSkeleton } from "./StatePages.jsx";
+
+// Поручительство даёт сам собственник: представитель-не-собственник только подтверждает, что согласие получено.
+const guaranteeLabel = (authority) => {
+  if (!isRepresentative(authority)) return "Собственник согласен стать поручителем по кредиту";
+  if (authority.role === "OWNER") return "Я согласен(на) стать поручителем по кредиту";
+  return "Подтверждаю, что согласие собственника на поручительство получено";
+};
 
 const STEP_TITLES = ["Цель", "Условия", "Выручка", "Согласия и отправка"];
 const STEP2_FIELDS = ["amount", "term_months", "variant", "product_code", "collateral", "collateral.type", "collateral.description", "collateral.estimated_value", "owner_guarantee_consent", "inn"];
@@ -111,10 +118,18 @@ function StepGoal({ f, set, errors, setErrors, purposes, products, go, appId }) 
   const rec = useResource(() => (f.purpose ? api.recommendation(f.purpose) : null), [f.purpose]);
   const allowed = rec.data?.allowed || products.map((p) => p.code);
   const [checking, setChecking] = useState(false);
+  const [needsAuthority, setNeedsAuthority] = useState(null);
 
   useEffect(() => {
     if (rec.data && !rec.data.allowed.includes(f.product_code)) set({ product_code: rec.data.recommended });
   }, [rec.data]);
+
+  useEffect(() => setNeedsAuthority(null), [f.inn]);
+
+  const proceed = (company) => {
+    set({ authority: company.authority || null, ...(company.has_account != null ? { has_account: company.has_account } : {}) });
+    go(2);
+  };
 
   const next = async () => {
     const e = {};
@@ -128,9 +143,9 @@ function StepGoal({ f, set, errors, setErrors, purposes, products, go, appId }) 
     setChecking(true);
     try {
       const company = await api.company(f.inn);
+      if (company.authority_required) { setNeedsAuthority(company); return; }
       if (!company.can_apply) { setErrors({ inn: company.cannot_apply_reason || "По этой компании подать заявку нельзя" }); return; }
-      if (company.has_account != null) set({ has_account: company.has_account });
-      go(2);
+      proceed(company);
     } catch (err) {
       setErrors({ inn: err.status === 404 ? "Компании с таким ИНН нет в ЕГРЮЛ и ЕГРИП" : errorText(err) });
     } finally {
@@ -149,6 +164,7 @@ function StepGoal({ f, set, errors, setErrors, purposes, products, go, appId }) 
             </div>
           </div>
         </Card>
+        {needsAuthority && <AuthorityCard company={needsAuthority} onVerified={proceed} />}
         <Card>
           <div role="radiogroup" aria-label="Цель" className="stack stack-2">
             <h2 className="h2">Нужны деньги на…</h2>
@@ -181,9 +197,92 @@ function StepGoal({ f, set, errors, setErrors, purposes, products, go, appId }) 
             </div>
           </Card>
         )}
-        <div><Button onClick={next} loading={checking}>Продолжить</Button></div>
+        {!needsAuthority && <div><Button onClick={next} loading={checking}>Продолжить</Button></div>}
       </div>
     </div>
+  );
+}
+
+const POA_KINDS = [["MCHD", "МЧД"], ["NOTARIAL", "Нотариальная"], ["SIMPLE", "Простая письменная"]];
+
+function AuthorityCard({ company, onVerified }) {
+  const { reloadMe } = useAuth();
+  const [role, setRole] = useState("");
+  const [kind, setKind] = useState("MCHD");
+  const [poa, setPoa] = useState({ mchd_guid: "", notarized_on: "", register_number: "", notary_name: "" });
+  const [errors, setErrors] = useState({});
+  const [busy, setBusy] = useState(false);
+  const [owner, setOwner] = useState(null);
+  const setField = (k) => (v) => setPoa({ ...poa, [k]: v });
+
+  const verify = async () => {
+    const e = {};
+    if (!role) e.role = "Выберите, кем вы приходитесь компании";
+    if (kind === "MCHD" && !/^[0-9a-f-]{36}$/i.test(poa.mchd_guid.trim())) e.mchd_guid = "Номер МЧД — 36 символов, как в реестре ФНС";
+    const notarizedOn = parseDateNumeric(poa.notarized_on);
+    if (kind === "NOTARIAL") {
+      if (!notarizedOn) e.notarized_on = "Дата в формате дд.мм.гггг";
+      if (!poa.register_number.trim()) e.register_number = "Укажите реестровый номер";
+      if (poa.notary_name.trim().length < 3) e.notary_name = "Укажите ФИО нотариуса";
+    }
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    setBusy(true);
+    try {
+      const body = kind === "MCHD"
+        ? { kind, mchd_guid: poa.mchd_guid.trim() }
+        : { kind, notarized_on: notarizedOn, register_number: poa.register_number.trim(), notary_name: poa.notary_name.trim() };
+      const verified = await api.claimAuthority(company.inn, role, body);
+      reloadMe();
+      if (verified.authority?.registered_founder === false && owner === null) { setOwner(verified); return; }
+      onVerified(verified);
+    } catch (err) {
+      const fe = fieldErrors(err);
+      const poaError = fe["authority.power_of_attorney"];
+      setErrors({ role: fe["authority.role"], poa: poaError, form: poaError || fe["authority.role"] ? null : errorText(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const isDirector = role === "DIRECTOR";
+  return (
+    <Card>
+      <div className="stack stack-4">
+        <h2 className="h2">Кем вы приходитесь компании?</h2>
+        <p className="measure muted">По ЕГРЮЛ руководитель {company.director}. Подать заявку и подписать договор без доверенности может только он.</p>
+        <div role="radiogroup" aria-label="Роль" className="radio-list">
+          {APPLICANT_ROLES.map(([code, label]) => <RadioRow key={code} checked={role === code} onSelect={() => { setRole(code); setOwner(null); }}>{label}</RadioRow>)}
+        </div>
+        <FormError>{errors.role}</FormError>
+        {isDirector && <Note>По ЕГРЮЛ руководитель {company.director}. Если это не вы, выберите свою роль и приложите доверенность.</Note>}
+        {role && !isDirector && (
+          <div className="stack stack-4">
+            <h3 className="body-strong">Доверенность на подачу заявки и подписание кредитного договора</h3>
+            <div role="radiogroup" aria-label="Вид доверенности" className="radio-list">
+              {POA_KINDS.map(([code, label]) => <RadioRow key={code} checked={kind === code} onSelect={() => setKind(code)}>{label}</RadioRow>)}
+            </div>
+            {kind === "MCHD" && <Field label="Номер МЧД (GUID)" value={poa.mchd_guid} onChange={setField("mchd_guid")} error={errors.mchd_guid} placeholder="5f0c2b9e-1d4a-4c6b-9a7e-2b8f3c1d0e01" />}
+            {kind === "NOTARIAL" && (
+              <>
+                <Field label="Дата удостоверения" value={poa.notarized_on} onChange={setField("notarized_on")} error={errors.notarized_on} placeholder="дд.мм.гггг" />
+                <Field label="Реестровый номер" value={poa.register_number} onChange={setField("register_number")} error={errors.register_number} placeholder="77/123-н/77-2026-4-512" />
+                <Field label="ФИО нотариуса" value={poa.notary_name} onChange={setField("notary_name")} error={errors.notary_name} />
+              </>
+            )}
+            {kind === "SIMPLE" && <Note>Простую доверенность мы не можем проверить онлайн. Оформите МЧД в личном кабинете ФНС — это бесплатно — и вернитесь с её номером.</Note>}
+            <FormError>{errors.poa}</FormError>
+          </div>
+        )}
+        {owner && <Note>Вас нет среди учредителей по ЕГРЮЛ. Доверенность действует, но проверьте выбранную роль.</Note>}
+        <div className="stack stack-2 start">
+          {owner
+            ? <Button onClick={() => onVerified(owner)}>Продолжить</Button>
+            : <Button onClick={verify} loading={busy} disabled={!role || isDirector || kind === "SIMPLE"}>Проверить доверенность</Button>}
+          <FormError>{errors.form}</FormError>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -214,7 +313,7 @@ function StepTerms({ f, set, errors, busy, products, collateralTypes, onNext, du
               <Field label="Срок, мес" variant="term" value={f.term_months} onChange={(v) => set({ term_months: v })} hint={`От ${variant.term_min} до ${variant.term_max}`} error={errors.term_months} />
             </div>
             {company && variant.variant === "UNSECURED" && (
-              <Checkbox label="Собственник согласен стать поручителем по кредиту" checked={!!f.owner_guarantee_consent} onChange={(v) => set({ owner_guarantee_consent: v })} />
+              <Checkbox label={guaranteeLabel(f.authority)} checked={!!f.owner_guarantee_consent} onChange={(v) => set({ owner_guarantee_consent: v })} />
             )}
             {variant.variant === "SECURED" && (
               <div className="stack stack-4 divider-top" style={{ paddingTop: 16 }}>
@@ -314,6 +413,7 @@ function StepSubmit({ f, purposes, products, user, appId, go, onDone }) {
   const given = consents.data || [];
   const missing = required.filter((t) => !given.some((g) => g.type === t));
   const companyName = user.companies?.find((c) => c.inn === f.inn)?.name;
+  const consentLabels = isRepresentative(f.authority) ? { ...CONSENT_LABELS, ...REPRESENTATIVE_CONSENT_LABELS } : CONSENT_LABELS;
   const product = products.find((p) => p.code === f.product_code);
 
   const submit = async () => {
@@ -362,6 +462,7 @@ function StepSubmit({ f, purposes, products, user, appId, go, onDone }) {
             <div className="stack stack-1">
               <span className="body-strong">Компания и счёт</span>
               <span>{companyName ? `${companyName} · ИНН ${f.inn}` : `ИНН ${f.inn}`}</span>
+              {f.authority && <span className="muted">Вы подаёте как: {roleName(f.authority.role).toLowerCase()}{f.authority.power_of_attorney ? `, ${f.authority.power_of_attorney}` : ""}</span>}
               <span className="muted">{f.has_account ? "Веду бизнес в этом банке" : "Веду бизнес в другом банке, выписка загружена"}</span>
               <FormError>{errors.revenue}</FormError>
             </div>
@@ -376,11 +477,11 @@ function StepSubmit({ f, purposes, products, user, appId, go, onDone }) {
             {given.filter((g) => required.includes(g.type)).map((g) => (
               <div key={g.type} className="note">
                 <Icon name="circle-check" style={{ color: "var(--success)" }} />
-                <div className="stack"><span>{CONSENT_LABELS[g.type]}</span><span className="small muted">Дано {formatDateNumeric(g.given_at)}{g.given_by === user.id ? ", вами" : ""}</span></div>
+                <div className="stack"><span>{consentLabels[g.type]}</span><span className="small muted">Дано {formatDateNumeric(g.given_at)}{g.given_by === user.id ? ", вами" : ""}</span></div>
               </div>
             ))}
             {missing.map((t) => (
-              <Checkbox key={t} label={CONSENT_LABELS[t]} checked={!!checked[t]} onChange={(v) => setChecked({ ...checked, [t]: v })} />
+              <Checkbox key={t} label={consentLabels[t]} checked={!!checked[t]} onChange={(v) => setChecked({ ...checked, [t]: v })} />
             ))}
             <FormError>{errors.consents}</FormError>
           </div>
