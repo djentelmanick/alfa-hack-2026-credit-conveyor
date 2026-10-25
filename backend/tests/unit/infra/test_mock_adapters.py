@@ -19,6 +19,7 @@ from app.infra.mocks import (
     MockTurnoverAdapter,
     SyntheticData,
 )
+from tests.fakes.scenarios import KHLEBNY_DVOR, PETROVYKH
 from tests.unit.infra.conftest import (
     ALL_INNS,
     IVANOVA,
@@ -33,8 +34,8 @@ UNKNOWN_INN = "7700000001"
 
 
 class TestSyntheticData:
-    def test_loads_five_scope_companies(self, fixtures: SyntheticData) -> None:
-        assert set(fixtures.companies) == set(ALL_INNS)
+    def test_loads_scope_and_representative_companies(self, fixtures: SyntheticData) -> None:
+        assert set(fixtures.companies) == {*ALL_INNS, KHLEBNY_DVOR, PETROVYKH}
 
     def test_person_is_linked_to_their_company(self, fixtures: SyntheticData) -> None:
         director = fixtures.companies[TECHPROM].egrul.director

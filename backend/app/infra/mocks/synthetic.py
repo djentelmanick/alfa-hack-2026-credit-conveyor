@@ -308,6 +308,47 @@ class PassportRegistry(_Raw):
     invalid: tuple[InvalidPassport, ...]
 
 
+# --- Реестры доверенностей (12-fns-mchd.md, 13-fnp-notary-poa.md) ---
+
+PoaPowerCode = Literal["LOAN_APPLICATION", "LOAN_AGREEMENT_SIGNING"]
+
+
+class PoaParty(_Raw):
+    inn: str
+    full_name: str
+
+
+class MchdRecord(_Raw):
+    guid: str
+    principal: PoaParty
+    signed_by: PoaParty
+    representative: PoaParty
+    issued_at: date
+    valid_until: date
+    status: Literal["active", "revoked"]
+    powers: tuple[PoaPowerCode, ...]
+
+
+class NotaryPoaRecord(_Raw):
+    notarized_on: date
+    register_number: str
+    notary_name: str
+    principal: PoaParty
+    signed_by: PoaParty
+    representative: PoaParty
+    valid_until: date
+    revoked: bool
+    powers: tuple[PoaPowerCode, ...]
+
+
+class MchdRegistry(_Raw):
+    records: tuple[MchdRecord, ...] = ()
+
+
+class NotaryPoaRegistry(_Raw):
+    records: tuple[NotaryPoaRecord, ...] = ()
+
+
 class SyntheticData:
     """Синтетика в памяти с индексами по ИНН субъекта: порты БКИ и ФССП спрашивают по физлицу."""
 
@@ -316,6 +357,8 @@ class SyntheticData:
         companies: Iterable[CompanyFixture],
         rosfin: RosfinList,
         passports: PassportRegistry,
+        mchd: MchdRegistry | None = None,
+        notary_poa: NotaryPoaRegistry | None = None,
     ) -> None:
         self._companies: dict[str, CompanyFixture] = {}
         self._credit_reports: dict[str, BkiReport] = {}
@@ -325,6 +368,8 @@ class SyntheticData:
             self._add(company)
         self.rosfin = rosfin
         self.passports = passports
+        self.mchd = mchd or MchdRegistry()
+        self.notary_poa = notary_poa or NotaryPoaRegistry()
 
     def _add(self, company: CompanyFixture) -> None:
         if company.inn in self._companies:
@@ -356,7 +401,9 @@ class SyntheticData:
             companies.append(company)
         rosfin = RosfinList.model_validate(_read_json(data_dir / "rosfin_list.json"))
         passports = PassportRegistry.model_validate(_read_json(data_dir / "passports.json"))
-        return cls(companies, rosfin, passports)
+        mchd = MchdRegistry.model_validate(_read_json(data_dir / "mchd.json"))
+        notary_poa = NotaryPoaRegistry.model_validate(_read_json(data_dir / "notary_poa.json"))
+        return cls(companies, rosfin, passports, mchd, notary_poa)
 
     @property
     def companies(self) -> Mapping[str, CompanyFixture]:

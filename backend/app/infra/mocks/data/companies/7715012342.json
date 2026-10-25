@@ -1,0 +1,451 @@
+{
+  "egrul": {
+    "inn": "7715012342",
+    "ogrn": "1217700123464",
+    "ogrnip": null,
+    "full_name": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ \"ХЛЕБНЫЙ ДВОР\"",
+    "short_name": "ООО \"ХЛЕБНЫЙ ДВОР\"",
+    "kpp": "771501001",
+    "registration_date": "2021-05-17",
+    "status": "active",
+    "address": "125319, Г.МОСКВА, УЛ. ЧАСОВАЯ, Д. 5, ПОМЕЩ. 1",
+    "entity_type": "legal",
+    "authorized_capital": 100000,
+    "director": {
+      "full_name": "МОРОЗОВ СЕРГЕЙ ПЕТРОВИЧ",
+      "inn": "771501234573",
+      "position": "ГЕНЕРАЛЬНЫЙ ДИРЕКТОР",
+      "record_date": "2021-05-17"
+    },
+    "founders": [
+      {
+        "full_name": "МОРОЗОВ СЕРГЕЙ ПЕТРОВИЧ",
+        "inn": "771501234573",
+        "share_percent": 100,
+        "share_amount": 100000,
+        "record_date": "2021-05-17"
+      }
+    ],
+    "primary_okved": {
+      "code": "56.10",
+      "name": "Деятельность ресторанов и услуги по доставке продуктов питания"
+    },
+    "additional_okveds": [],
+    "has_unreliable_info": false,
+    "unreliable_fields": []
+  },
+  "bki": [
+    {
+      "subject_inn": "7715012342",
+      "subject_type": "company",
+      "report_date": "2026-10-24",
+      "credits": [
+        {
+          "contract_id": "КД-2025-031045",
+          "creditor_name": "АО \"СЕВЕРНЫЙ БАНК\"",
+          "credit_type": "credit",
+          "amount": 1500000,
+          "balance": 900000,
+          "monthly_payment": 50000,
+          "opened_date": "2025-03-10",
+          "closed_date": null,
+          "status": "open",
+          "overdue_days": 0,
+          "overdue_amount": 0,
+          "max_overdue_days_12m": 0,
+          "had_overdue_30plus_12m": false
+        },
+        {
+          "contract_id": "КД-2022-004417",
+          "creditor_name": "АО \"СЕВЕРНЫЙ БАНК\"",
+          "credit_type": "credit",
+          "amount": 800000,
+          "balance": 0,
+          "monthly_payment": 0,
+          "opened_date": "2022-02-01",
+          "closed_date": "2023-08-01",
+          "status": "closed",
+          "overdue_days": 0,
+          "overdue_amount": 0,
+          "max_overdue_days_12m": 0,
+          "had_overdue_30plus_12m": false
+        }
+      ],
+      "inquiries": [
+        {
+          "date": "2026-08-20",
+          "creditor_name": "АО \"СЕВЕРНЫЙ БАНК\"",
+          "amount": 2000000,
+          "purpose": "credit"
+        }
+      ],
+      "summary": {
+        "total_monthly_payments": 50000,
+        "has_current_overdue_30plus": false,
+        "has_closed_without_overdue": true,
+        "worst_status_12m": "clean",
+        "inquiries_last_3m": 1,
+        "has_history": true
+      }
+    },
+    {
+      "subject_inn": "771501234573",
+      "subject_type": "person",
+      "report_date": "2026-10-24",
+      "credits": [
+        {
+          "contract_id": "ПК-2019-118820",
+          "creditor_name": "АО \"СЕВЕРНЫЙ БАНК\"",
+          "credit_type": "credit",
+          "amount": 300000,
+          "balance": 0,
+          "monthly_payment": 0,
+          "opened_date": "2019-04-01",
+          "closed_date": "2021-04-01",
+          "status": "closed",
+          "overdue_days": 0,
+          "overdue_amount": 0,
+          "max_overdue_days_12m": 0,
+          "had_overdue_30plus_12m": false
+        }
+      ],
+      "inquiries": [],
+      "summary": {
+        "total_monthly_payments": 0,
+        "has_current_overdue_30plus": false,
+        "has_closed_without_overdue": true,
+        "worst_status_12m": "clean",
+        "inquiries_last_3m": 0,
+        "has_history": true
+      }
+    }
+  ],
+  "turnover": {
+    "inn": "7715012342",
+    "has_account": true,
+    "months": [
+      {
+        "month": "2025-10-01",
+        "incoming": 1900000,
+        "outgoing": 1672000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 665000,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 285000,
+            "share_percent": 15.0
+          }
+        ]
+      },
+      {
+        "month": "2025-11-01",
+        "incoming": 1950000,
+        "outgoing": 1716000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 682500,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 292500,
+            "share_percent": 15.0
+          }
+        ]
+      },
+      {
+        "month": "2025-12-01",
+        "incoming": 2200000,
+        "outgoing": 1936000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 770000,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 330000,
+            "share_percent": 15.0
+          }
+        ]
+      },
+      {
+        "month": "2026-01-01",
+        "incoming": 1800000,
+        "outgoing": 1584000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 630000,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 270000,
+            "share_percent": 15.0
+          }
+        ]
+      },
+      {
+        "month": "2026-02-01",
+        "incoming": 1850000,
+        "outgoing": 1628000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 647500,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 277500,
+            "share_percent": 15.0
+          }
+        ]
+      },
+      {
+        "month": "2026-03-01",
+        "incoming": 2000000,
+        "outgoing": 1760000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 700000,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 300000,
+            "share_percent": 15.0
+          }
+        ]
+      },
+      {
+        "month": "2026-04-01",
+        "incoming": 2050000,
+        "outgoing": 1804000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 717500,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 307500,
+            "share_percent": 15.0
+          }
+        ]
+      },
+      {
+        "month": "2026-05-01",
+        "incoming": 2100000,
+        "outgoing": 1848000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 735000,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 315000,
+            "share_percent": 15.0
+          }
+        ]
+      },
+      {
+        "month": "2026-06-01",
+        "incoming": 2050000,
+        "outgoing": 1804000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 717500,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 307500,
+            "share_percent": 15.0
+          }
+        ]
+      },
+      {
+        "month": "2026-07-01",
+        "incoming": 2000000,
+        "outgoing": 1760000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 700000,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 300000,
+            "share_percent": 15.0
+          }
+        ]
+      },
+      {
+        "month": "2026-08-01",
+        "incoming": 2000000,
+        "outgoing": 1760000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 700000,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 300000,
+            "share_percent": 15.0
+          }
+        ]
+      },
+      {
+        "month": "2026-09-01",
+        "incoming": 2100000,
+        "outgoing": 1848000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 735000,
+            "share_percent": 35.0
+          },
+          {
+            "name": "ИП БЕЛОВ СЕРГЕЙ ПЕТРОВИЧ",
+            "inn": "771067890151",
+            "amount": 315000,
+            "share_percent": 15.0
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "annual_revenue": 24000000,
+      "avg_monthly_revenue": 2000000
+    }
+  },
+  "fns_transparent": {
+    "inn": "7715012342",
+    "accounts_blocked": false,
+    "mass_address": false,
+    "address_company_count": null,
+    "director": {
+      "full_name": "МОРОЗОВ СЕРГЕЙ ПЕТРОВИЧ",
+      "inn": "771501234573",
+      "company_count": 1,
+      "is_mass": false
+    },
+    "director_disqualified": false,
+    "disqualification_period": null,
+    "founders": [
+      {
+        "full_name": "МОРОЗОВ СЕРГЕЙ ПЕТРОВИЧ",
+        "inn": "771501234573",
+        "company_count": 1,
+        "is_mass": false
+      }
+    ],
+    "has_mass_founder": false,
+    "tax_debt_enforcement": 0,
+    "tax_debt_enforcement_date": "2026-10-01",
+    "arrears_and_penalties": 0,
+    "arrears_and_penalties_date": "2026-09-01",
+    "tax_reporting_missing": false,
+    "employee_count": 18,
+    "employee_count_year": 2025,
+    "taxes_paid": 2100000,
+    "revenue_accounting": 23400000,
+    "expense_accounting": 21300000
+  },
+  "gir_bo": {
+    "2025": {
+      "inn": "7715012342",
+      "company_name": "ООО \"ХЛЕБНЫЙ ДВОР\"",
+      "year": 2025,
+      "unit": "thousands",
+      "balance": {
+        "total_assets": 11700,
+        "fixed_assets": 3900,
+        "inventories": 1170,
+        "cash": 936,
+        "financial_assets": 2925,
+        "equity": 7800,
+        "long_term_debt": 2340,
+        "short_term_payables": 2600
+      },
+      "income_statement": {
+        "revenue": 23400,
+        "expenses": 20592,
+        "other_income": 0,
+        "other_expenses": 234,
+        "income_tax": 468,
+        "net_profit": 2106
+      },
+      "previous_year": {
+        "revenue": 20100,
+        "net_profit": 1608
+      },
+      "report_date": "2026-03-31",
+      "signed_by": "Морозов Сергей Петрович",
+      "requires_audit": false
+    }
+  },
+  "fssp": [
+    {
+      "subject": "ООО \"ХЛЕБНЫЙ ДВОР\"",
+      "subject_inn": "7715012342",
+      "search_type": "company",
+      "cases": [],
+      "total_active_amount": 0,
+      "has_active_cases": false
+    },
+    {
+      "subject": "МОРОЗОВ СЕРГЕЙ ПЕТРОВИЧ",
+      "subject_inn": "771501234573",
+      "search_type": "person",
+      "cases": [],
+      "total_active_amount": 0,
+      "has_active_cases": false
+    }
+  ],
+  "cbr_kyc": {
+    "inn": "7715012342",
+    "risk_level": "green",
+    "risk_level_date": "2026-10-15",
+    "entity_type": "legal"
+  }
+}

@@ -9,6 +9,7 @@ from types import TracebackType
 from typing import Self
 from uuid import UUID
 
+from app.domain.authority import PowerOfAttorney
 from app.domain.entities import (
     Application,
     AuditEntry,
@@ -110,6 +111,25 @@ class StatementParser(ABC):
 class PassportCheckPort(ABC):
     @abstractmethod
     async def is_valid(self, series: str, number: str) -> bool: ...
+
+
+class MchdRegistryPort(ABC):
+    """Реестр машиночитаемых доверенностей ФНС."""
+
+    @abstractmethod
+    async def find(
+        self, guid: UUID, principal_inn: str, representative_inn: str
+    ) -> PowerOfAttorney | None:
+        """Как сервис ФНС: запись находится только при совпадении всех трёх параметров."""
+
+
+class NotaryPoaRegistryPort(ABC):
+    """Реестр нотариальных доверенностей ФНП (reestr-dover.ru)."""
+
+    @abstractmethod
+    async def find(
+        self, notarized_on: date, register_number: str, notary_name: str
+    ) -> PowerOfAttorney | None: ...
 
 
 # --- Репозитории и единица работы ---

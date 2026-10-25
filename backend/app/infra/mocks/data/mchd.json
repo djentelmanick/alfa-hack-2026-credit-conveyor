@@ -1,0 +1,113 @@
+{
+  "records": [
+    {
+      "guid": "5f0c2b9e-1d4a-4c6b-9a7e-2b8f3c1d0e01",
+      "principal": {
+        "inn": "7715012342",
+        "full_name": "ООО \"ХЛЕБНЫЙ ДВОР\""
+      },
+      "signed_by": {
+        "inn": "771501234573",
+        "full_name": "МОРОЗОВ СЕРГЕЙ ПЕТРОВИЧ"
+      },
+      "representative": {
+        "inn": "771502345660",
+        "full_name": "ВАСИЛЬЕВА АННА ИГОРЕВНА"
+      },
+      "issued_at": "2026-10-01",
+      "valid_until": "2027-10-31",
+      "status": "active",
+      "powers": [
+        "LOAN_APPLICATION",
+        "LOAN_AGREEMENT_SIGNING"
+      ]
+    },
+    {
+      "guid": "5f0c2b9e-1d4a-4c6b-9a7e-2b8f3c1d0e02",
+      "principal": {
+        "inn": "7704123450",
+        "full_name": "ООО \"ТЕХПРОМ\""
+      },
+      "signed_by": {
+        "inn": "770623456765",
+        "full_name": "КУЗНЕЦОВ ИГОРЬ ВАЛЕНТИНОВИЧ"
+      },
+      "representative": {
+        "inn": "770734567870",
+        "full_name": "ЛЕБЕДЕВ ПАВЕЛ ОЛЕГОВИЧ"
+      },
+      "issued_at": "2026-10-01",
+      "valid_until": "2027-10-31",
+      "status": "active",
+      "powers": [
+        "LOAN_APPLICATION"
+      ]
+    },
+    {
+      "guid": "5f0c2b9e-1d4a-4c6b-9a7e-2b8f3c1d0e03",
+      "principal": {
+        "inn": "7715012342",
+        "full_name": "ООО \"ХЛЕБНЫЙ ДВОР\""
+      },
+      "signed_by": {
+        "inn": "771501234573",
+        "full_name": "МОРОЗОВ СЕРГЕЙ ПЕТРОВИЧ"
+      },
+      "representative": {
+        "inn": "771502345660",
+        "full_name": "ВАСИЛЬЕВА АННА ИГОРЕВНА"
+      },
+      "issued_at": "2026-10-01",
+      "valid_until": "2027-10-31",
+      "status": "revoked",
+      "powers": [
+        "LOAN_APPLICATION",
+        "LOAN_AGREEMENT_SIGNING"
+      ]
+    },
+    {
+      "guid": "5f0c2b9e-1d4a-4c6b-9a7e-2b8f3c1d0e04",
+      "principal": {
+        "inn": "7715012342",
+        "full_name": "ООО \"ХЛЕБНЫЙ ДВОР\""
+      },
+      "signed_by": {
+        "inn": "771501234573",
+        "full_name": "МОРОЗОВ СЕРГЕЙ ПЕТРОВИЧ"
+      },
+      "representative": {
+        "inn": "771502345660",
+        "full_name": "ВАСИЛЬЕВА АННА ИГОРЕВНА"
+      },
+      "issued_at": "2025-09-30",
+      "valid_until": "2026-09-30",
+      "status": "active",
+      "powers": [
+        "LOAN_APPLICATION",
+        "LOAN_AGREEMENT_SIGNING"
+      ]
+    },
+    {
+      "guid": "5f0c2b9e-1d4a-4c6b-9a7e-2b8f3c1d0e05",
+      "principal": {
+        "inn": "7715012342",
+        "full_name": "ООО \"ХЛЕБНЫЙ ДВОР\""
+      },
+      "signed_by": {
+        "inn": "771602345657",
+        "full_name": "ГУСЕВ ОЛЕГ ВИКТОРОВИЧ"
+      },
+      "representative": {
+        "inn": "771502345660",
+        "full_name": "ВАСИЛЬЕВА АННА ИГОРЕВНА"
+      },
+      "issued_at": "2025-06-01",
+      "valid_until": "2027-10-31",
+      "status": "active",
+      "powers": [
+        "LOAN_APPLICATION",
+        "LOAN_AGREEMENT_SIGNING"
+      ]
+    }
+  ]
+}
