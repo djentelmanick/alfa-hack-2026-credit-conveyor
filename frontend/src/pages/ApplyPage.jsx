@@ -17,7 +17,7 @@ const guaranteeLabel = (authority) => {
 };
 
 const STEP_TITLES = ["Цель", "Условия", "Выручка", "Согласия и отправка"];
-const STEP2_FIELDS = ["amount", "term_months", "variant", "product_code", "collateral", "collateral.type", "collateral.description", "collateral.estimated_value", "owner_guarantee_consent", "inn"];
+const STEP2_FIELDS = ["amount", "term_months", "variant", "product_code", "collateral", "collateral.type", "collateral.description", "collateral.estimated_value", "owner_guarantee_consent", "inn", "authority.power_of_attorney", "authority.role"];
 const innError = (inn) => (/^(\d{10}|\d{12})$/.test(inn) ? null : "Укажите 10 цифр для компании или 12 — для ИП");
 
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -139,7 +139,7 @@ function StepGoal({ f, set, errors, setErrors, purposes, products, go, appId }) 
     if (!f.product_code) e.product = "Выберите продукт";
     setErrors(e);
     if (Object.keys(e).length) return;
-    if (appId) { go(2); return; }
+    // Черновик тоже проверяем: доверенность могли отозвать, и тогда снова нужен шаг с ней.
     setChecking(true);
     try {
       const company = await api.company(f.inn);
@@ -288,7 +288,7 @@ function AuthorityCard({ company, onVerified }) {
 
 const range = (v) => `${formatMoney(v.amount_min)} – ${formatMoney(v.amount_max)}`;
 
-function StepTerms({ f, set, errors, busy, products, collateralTypes, onNext, duplicate }) {
+function StepTerms({ f, set, errors, busy, products, collateralTypes, onNext, duplicate, go }) {
   const product = products.find((p) => p.code === f.product_code) || products[0];
   const variant = product.variants.find((v) => v.variant === f.variant) || product.variants[0];
   const payment = annuityPayment(f.amount, variant.rate_min, f.term_months);
@@ -330,6 +330,12 @@ function StepTerms({ f, set, errors, busy, products, collateralTypes, onNext, du
         <div className="stack stack-4 start">
           <Button onClick={onNext} loading={busy}>Продолжить</Button>
           <FormError>{errors.form || errors.inn || errors.product_code || errors.owner_guarantee_consent}</FormError>
+          {(errors["authority.power_of_attorney"] || errors["authority.role"]) && (
+            <div className="stack stack-2 start">
+              <FormError>{errors["authority.power_of_attorney"] || errors["authority.role"]}</FormError>
+              <Button variant="link" onClick={() => go(1)}>Приложить действующую доверенность</Button>
+            </div>
+          )}
           {duplicate && (
             <Note>
               <p>{duplicate.message}</p>
@@ -433,7 +439,8 @@ function StepSubmit({ f, purposes, products, user, appId, go, onDone }) {
     } catch (err) {
       const fe = fieldErrors(err);
       const step2 = STEP2_FIELDS.find((k) => fe[k]);
-      setErrors({ terms: step2 ? fe[step2] : null, revenue: fe.statements, consents: fe.consents, form: Object.keys(fe).length ? null : err.message });
+      const authority = fe["authority.power_of_attorney"] || fe["authority.role"];
+      setErrors({ terms: step2 ? fe[step2] : null, revenue: fe.statements, consents: fe.consents, authority, form: Object.keys(fe).length ? null : err.message });
     } finally {
       setBusy(false);
     }
@@ -462,6 +469,12 @@ function StepSubmit({ f, purposes, products, user, appId, go, onDone }) {
             <div className="stack stack-1">
               <span className="body-strong">Компания и счёт</span>
               <span>{companyName ? `${companyName} · ИНН ${f.inn}` : `ИНН ${f.inn}`}</span>
+              {errors.authority && (
+                <>
+                  <FormError>{errors.authority}</FormError>
+                  <Button variant="link" onClick={() => go(1)}>Приложить действующую доверенность</Button>
+                </>
+              )}
               {f.authority && <span className="muted">Вы подаёте как: {roleName(f.authority.role).toLowerCase()}{f.authority.power_of_attorney ? `, ${f.authority.power_of_attorney}` : ""}</span>}
               <span className="muted">{f.has_account ? "Веду бизнес в этом банке" : "Веду бизнес в другом банке, выписка загружена"}</span>
               <FormError>{errors.revenue}</FormError>

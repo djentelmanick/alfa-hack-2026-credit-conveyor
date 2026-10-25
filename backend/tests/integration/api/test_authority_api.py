@@ -220,3 +220,34 @@ async def test_director_still_applies_without_poa(
     ).json()
     assert body["can_apply"] is True
     assert body["authority"]["basis"] == "DIRECTOR"
+
+
+async def test_revoked_link_asks_for_poa_again_and_hides_bank_data(
+    client: AsyncClient, container: Container, store: InMemoryStore, buh: User
+) -> None:
+    await _post(
+        client,
+        container,
+        buh,
+        "/companies/authority",
+        _claim(KHLEBNY_DVOR, "FINANCE_OFFICER", GUID_BUH),
+    )
+    user = await store.users.get(buh.id)
+    [link] = user.companies
+    assert link.authority is not None
+    revoked = PoaRequest(kind=PoaKind.MCHD, mchd_guid=UUID(GUID_REVOKED))
+    user.companies = [replace(link, authority=replace(link.authority, poa=revoked))]
+
+    stale = (await _post(client, container, buh, "/companies/get", {"inn": KHLEBNY_DVOR})).json()
+
+    assert (stale["can_apply"], stale["authority_required"]) == (False, True)
+    assert "has_account" not in stale
+    assert stale["cannot_apply_reason"] == "Доверенность отозвана"
+    renewed = await _post(
+        client,
+        container,
+        buh,
+        "/companies/authority",
+        _claim(KHLEBNY_DVOR, "FINANCE_OFFICER", GUID_BUH),
+    )
+    assert renewed.json()["can_apply"] is True

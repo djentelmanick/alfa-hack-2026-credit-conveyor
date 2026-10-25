@@ -49,6 +49,7 @@ SEED_ACCOUNTS = (
 class SeedOutcome(StrEnum):
     CREATED = "CREATED"
     SKIPPED = "SKIPPED"
+    UPDATED = "UPDATED"
 
 
 async def seed(
@@ -64,8 +65,15 @@ async def seed(
     outcome: dict[str, SeedOutcome] = {}
     async with uow() as unit:
         for account in accounts:
-            if await unit.users.get_by_login(account.login) is not None:
-                outcome[account.login] = SeedOutcome.SKIPPED
+            existing = await unit.users.get_by_login(account.login)
+            if existing is not None:
+                # Учётки из базы до миграции 0008 без ИНН: директоров сверяют по ИНН,
+                # и без него старая демо-база перестала бы пускать их к заявке.
+                if existing.inn is None and account.person_inn is not None:
+                    existing.inn = account.person_inn
+                    outcome[account.login] = SeedOutcome.UPDATED
+                else:
+                    outcome[account.login] = SeedOutcome.SKIPPED
                 continue
             user = User(
                 id=uuid4(),

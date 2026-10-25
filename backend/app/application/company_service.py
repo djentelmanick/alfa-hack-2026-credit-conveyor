@@ -5,7 +5,7 @@ from app.application.authority_service import AuthorityClaim, AuthorityService
 from app.domain.authority import ApplicantAuthority
 from app.domain.entities import TokenClaims, User, UserCompany
 from app.domain.enums import AuthorityBasis, CompanyKind, Role
-from app.domain.errors import NotDirector
+from app.domain.errors import NotDirector, ValidationFailed
 from app.domain.ports import AccountTurnoverPort, CompanyRegistryPort, UnitOfWork
 from app.domain.value_objects import CompanyProfile, Money
 
@@ -73,16 +73,22 @@ class CompanyService:
 
     async def _client_view(self, user: User, profile: CompanyProfile) -> CompanyView:
         authority: ApplicantAuthority | None = None
-        if profile.is_director(user):
-            authority = await self._authority.resolve(user, profile, None)
-        elif user.represents(profile.inn):
-            link = user.company(profile.inn)
-            authority = link.authority if link else None
+        reason = NotDirector.default_message
+        try:
+            # Привязка по доверенности перепроверяется: её могли отозвать или она истекла,
+            # и тогда представитель снова видит шаг с доверенностью, а не банковские данные.
+            authority = await self._authority.resolve(
+                user, profile, AuthorityClaim.from_link(user.company(profile.inn))
+            )
+        except NotDirector:
+            pass
+        except ValidationFailed as exc:
+            reason = "; ".join(e.message for e in exc.details)
         can_apply = authority is not None
         return await self._view(
             profile,
             can_apply=can_apply,
-            reason=None if can_apply else NotDirector.default_message,
+            reason=None if can_apply else reason,
             sees=can_apply,
             authority_required=not can_apply and profile.kind is CompanyKind.LLC,
             authority=authority,
