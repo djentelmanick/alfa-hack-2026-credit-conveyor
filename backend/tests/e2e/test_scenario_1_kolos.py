@@ -86,7 +86,7 @@ def test_approval_is_cancelled_after_7_days(e2e: E2E) -> None:
     token = login(e2e.client, "kolos")
     portal = e2e.client.portal
     assert portal is not None
-    expiration = e2e.container.expiration
+    expiration = e2e.expiration
 
     with connect(e2e.client, token) as ws:
         application_id, _ = _submit_and_wait_approval(e2e, ws, token)

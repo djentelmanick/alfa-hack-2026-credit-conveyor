@@ -1,7 +1,7 @@
 """e2e через HTTP и WebSocket на настоящих PostgreSQL и MinIO (TEST_DATABASE_URL, TEST_S3_ENDPOINT).
 
 Приложение поднимается целиком через lifespan (TestClient), меняются только часы
-и скоринг: FixedScoringEngine по SCOPE раздел 12, пока модели нет.
+и скоринг: FixedScoringEngine по SCOPE раздел 12.
 """
 
 import asyncio
@@ -15,17 +15,29 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.api.v1.deps import Container
+from app.api.v1.deps import Container, Lifecycle
+from app.application.expiration_job import ExpirationJob
 from app.domain.entities import UserCompany
 from app.domain.enums import CompanyKind, Role
+from app.domain.ports import UnitOfWork
 from app.domain.scoring import ScoringModel
+from app.infra.config.catalog import load_catalog
 from app.infra.config.settings import Settings
+from app.infra.db.mock_failures import SqlMockFailures
 from app.infra.db.models import Base
 from app.infra.db.session import create_session_factory
 from app.infra.db.uow import SqlUnitOfWork
 from app.infra.storage.s3 import S3ClientFactory
-from app.main import build_container, create_app
+from app.main import (
+    ApiMessagingPorts,
+    EventSink,
+    build_container,
+    build_mocks,
+    build_pipeline,
+    create_app,
+)
 from tests.fakes.auth import FixedClock, make_user
+from tests.fakes.runtime import InMemoryEventBus, InProcessTaskQueue
 from tests.fakes.scenarios import IVANOVA, KOLOS, ROMASHKA, SOKOLOV, TECHPROM
 from tests.fakes.scoring import FixedScoringEngine
 
@@ -51,6 +63,7 @@ class E2E:
     container: Container
     clock: FixedClock
     settings: Settings
+    expiration: ExpirationJob
 
 
 async def _reset_and_seed(url: str) -> None:
@@ -124,14 +137,58 @@ def scoring() -> ScoringModel:
     return FixedScoringEngine()
 
 
+@dataclass(frozen=True, slots=True)
+class _InProcessWorker:
+    queue: InProcessTaskQueue
+
+    async def start(self) -> None:
+        pass
+
+    async def stop(self) -> None:
+        await self.queue.shutdown()
+
+
 @pytest.fixture
 def e2e(e2e_settings: Settings, scoring: ScoringModel) -> Iterator[E2E]:
     asyncio.run(_reset_and_seed(e2e_settings.database_url))
     clock = FixedClock()
+    expirations: list[ExpirationJob] = []
 
     def factory(settings: Settings, engine: AsyncEngine) -> Container:
-        return build_container(settings, engine, clock=clock, scoring=scoring)
+        # Конвейер worker крутится в процессе api: вместо RabbitMQ in-memory очередь и шина.
+        bus, queue = InMemoryEventBus(), InProcessTaskQueue()
+        session_factory = create_session_factory(engine)
+
+        def uow() -> UnitOfWork:
+            return SqlUnitOfWork(session_factory)
+
+        mocks = build_mocks(settings, SqlMockFailures(session_factory))
+        pipeline = build_pipeline(
+            settings,
+            uow=uow,
+            engine=engine,
+            sources=mocks.sources,
+            catalog=load_catalog(),
+            publisher=bus,
+            clock=clock,
+            scoring=scoring,
+        )
+        queue.bind(pipeline.run)
+        expirations.append(ExpirationJob(uow=uow, publisher=bus, clock=clock))
+
+        def subscribe(deliver: EventSink) -> Lifecycle:
+            bus.subscribe(deliver)
+            return _InProcessWorker(queue)
+
+        messaging = ApiMessagingPorts(queue=queue, publisher=bus, subscribe=subscribe)
+        return build_container(settings, engine, clock=clock, messaging=messaging)
 
     app = create_app(e2e_settings, container_factory=factory)
     with TestClient(app) as client:
-        yield E2E(client=client, container=app.state.container, clock=clock, settings=e2e_settings)
+        yield E2E(
+            client=client,
+            container=app.state.container,
+            clock=clock,
+            settings=e2e_settings,
+            expiration=expirations[-1],
+        )

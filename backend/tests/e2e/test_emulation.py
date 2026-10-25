@@ -62,7 +62,7 @@ def test_emulation_does_not_touch_offer_deadlines(e2e: E2E) -> None:
     # Перемотка на 11 месяцев не должна сдвинуть реальное время, по которому истекают предложения.
     portal = e2e.client.portal
     assert portal is not None
-    assert portal.call(e2e.container.expiration.run_once) == 0
+    assert portal.call(e2e.expiration.run_once) == 0
 
     after = post(e2e.client, sokolov, "/applications/get", {"application_id": application_id})
     assert (after["status"], after["expires_at"]) == ("COUNTER_OFFER", before["expires_at"])
