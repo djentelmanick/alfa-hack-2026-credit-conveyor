@@ -33,5 +33,5 @@ async def mock_failures(
     _: AnalystClaims,
     container: Annotated[Container, Depends(get_demo_container)],
 ) -> MockFailureOut:
-    container.mock_failures.set(body.source, body.inn, enabled=body.enabled)
+    await container.mock_failures.set(body.source, body.inn, enabled=body.enabled)
     return MockFailureOut(source=body.source, inn=body.inn, enabled=body.enabled)

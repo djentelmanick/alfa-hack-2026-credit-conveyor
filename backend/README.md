@@ -6,10 +6,14 @@ FastAPI-бэкенд «Умного кредитного кабинета пре
 ## Запуск
 
 ```bash
-docker compose up --build -d                             # api, postgres, minio, minio-init
+docker compose up --build -d                             # api, worker, rabbitmq, postgres, minio
 docker compose exec api python -m app.infra.mocks.seed   # тестовые учётки
 curl http://localhost:8000/api/v1/health                 # {"status":"ok","db":"ok","s3":"ok"}
+docker compose logs -f worker                            # конвейер, reconciler, истечение сроков
 ```
+
+`api` принимает запросы и держит WebSocket, проверку по источникам и решение выполняет отдельный процесс
+`worker`. Задачи и события идут через RabbitMQ.
 
 Миграции контейнер `api` применяет сам при каждом старте (`alembic upgrade head` перед uvicorn), поэтому
 пустая база поднимается одной командой. Начать демо с нуля: `docker compose down -v`, затем три команды выше.
@@ -18,6 +22,7 @@ curl http://localhost:8000/api/v1/health                 # {"status":"ok","db":"
 |---|---|
 | http://localhost:8000/docs | Swagger |
 | http://localhost:9001 | консоль MinIO (`minioadmin` / `minioadmin`) |
+| http://localhost:15672 | консоль RabbitMQ (`app` / `app`), очереди `applications.process` и `applications.process.dlq` |
 | localhost:5432 | PostgreSQL (`app` / `app`, БД `credit`) |
 
 Compose берёт переменные из `.env.example`. Чтобы поменять значения, создайте рядом `.env`:

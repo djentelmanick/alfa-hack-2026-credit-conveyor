@@ -122,6 +122,7 @@ class SourceType(StrEnum):
 class FetchStatus(StrEnum):
     OK = "OK"
     FAILED = "FAILED"
+    SKIPPED = "SKIPPED"
 
 
 class KycLevel(StrEnum):

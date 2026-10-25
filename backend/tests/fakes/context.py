@@ -6,7 +6,12 @@ from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
-from app.domain.checks import PipelineContext, StatementVerifier, default_authenticity_strategies
+from app.domain.checks import (
+    CheckingData,
+    PipelineContext,
+    StatementVerifier,
+    default_authenticity_strategies,
+)
 from app.domain.dates import add_months
 from app.domain.entities import Application, BankStatement, Consent, StatementOperation
 from app.domain.enums import (
@@ -18,6 +23,7 @@ from app.domain.enums import (
     KycLevel,
     Purpose,
     SignatureStatus,
+    SourceType,
     Variant,
 )
 from app.domain.value_objects import (
@@ -50,6 +56,28 @@ from tests.fakes.scenarios import NOW, TODAY
 COMPANY_INN = "7714012340"
 DIRECTOR_INN = "771401234587"
 FOUNDER_INN = "771402345674"
+
+
+def checking_data(
+    ctx: PipelineContext, *, missing: frozenset[SourceType] = frozenset()
+) -> CheckingData:
+    """Те же данные, что в контексте, в виде, который получают стоп-факторы."""
+    return CheckingData(
+        application=ctx.application,
+        company=ctx.company,
+        credit_report=ctx.credit_report,
+        related_credit_reports=ctx.related_credit_reports,
+        turnover=ctx.turnover,
+        statement=ctx.statement,
+        tax=ctx.tax,
+        bailiff=ctx.bailiff,
+        director_bailiff=ctx.director_bailiff,
+        cbr_level=ctx.cbr_level,
+        rosfin_hit=ctx.rosfin_hit,
+        reported_annual_revenue=ctx.reported_annual_revenue,
+        missing=missing,
+        now=ctx.now,
+    )
 
 
 def make_company(**overrides: Any) -> CompanyProfile:

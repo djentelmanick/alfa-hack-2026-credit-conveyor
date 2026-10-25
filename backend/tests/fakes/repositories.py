@@ -50,6 +50,16 @@ class InMemoryApplicationRepository(ApplicationRepository):
             (a for a in self._items.values() if a.status in statuses), key=lambda a: a.created_at
         )
 
+    async def list_stale(
+        self, statuses: Collection[ApplicationStatus], updated_before: datetime
+    ) -> list[Application]:
+        found = [
+            a
+            for a in self._items.values()
+            if a.status in statuses and a.updated_at < updated_before
+        ]
+        return sorted(found, key=lambda a: (a.updated_at, a.id))
+
     async def list_expired(self, now: datetime) -> list[Application]:
         return [
             a

@@ -8,7 +8,7 @@ from starlette.websockets import WebSocket
 from app.domain.entities import Application, TokenClaims
 from app.domain.enums import ApplicationStatus, Role
 from app.domain.events import ApplicationEvent
-from app.domain.ports import StatusPublisher, UnitOfWork
+from app.domain.ports import UnitOfWork
 from app.domain.state_machine import FINAL_STATUSES
 from app.infra.realtime.messages import event_message, snapshot_message
 
@@ -28,8 +28,11 @@ class _Connection:
         return self.claims.role is Role.ANALYST or event.applicant_id == self.claims.user_id
 
 
-class WsConnectionManager(StatusPublisher):
-    """Подключения хранятся в памяти одного процесса (ограничение MVP, BACKEND_SPEC раздел 11)."""
+class WsConnectionManager:
+    """Подключения живут в памяти процесса api, события приходят из RabbitMQ через EventSubscriber.
+
+    Так клиент видит и события worker, и события другого экземпляра api (BACKEND_SPEC, разд. 13).
+    """
 
     def __init__(self, uow: Callable[[], UnitOfWork]) -> None:
         self._uow = uow
@@ -55,7 +58,7 @@ class WsConnectionManager(StatusPublisher):
         async with connection.lock:
             await websocket.send_json(message)
 
-    async def publish(self, event: ApplicationEvent) -> None:
+    async def deliver(self, event: ApplicationEvent) -> None:
         message = event_message(event)
         for connection in list(self._connections.values()):
             if not connection.sees(event):
@@ -64,7 +67,7 @@ class WsConnectionManager(StatusPublisher):
                 async with connection.lock:
                     await connection.websocket.send_json(message)
             except Exception:
-                # Клиент ушёл без close: конвейер из-за этого падать не должен.
+                # Клиент ушёл без close: остальным подключениям это мешать не должно.
                 logger.info("Не удалось отправить событие по WebSocket, отключаем клиента")
                 self.disconnect(connection.websocket)
 

@@ -12,14 +12,14 @@ from app.application.company_service import CompanyService
 from app.application.consent_service import ConsentService
 from app.application.contract_service import ContractDocuments, ContractService
 from app.application.emulation_service import EmulationService
+from app.application.findings_builder import FindingsBuilder
 from app.application.form_validator import FormValidator
 from app.application.report_builder import ReportBuilder
 from app.application.signing_service import SigningService
 from app.domain.decision import RatePolicy
 from app.domain.entities import User, UserCompany
 from app.domain.enums import Role
-from app.domain.ports import Clock, FileStoragePort, StatusPublisher, TaskRunner, UnitOfWork
-from app.domain.scoring import ScoringModel
+from app.domain.ports import Clock, FileStoragePort, StatusPublisher, TaskQueue, UnitOfWork
 from app.infra.config.catalog import load_catalog
 from app.infra.documents import ReportlabContractRenderer
 from app.infra.mocks import (
@@ -34,10 +34,9 @@ from app.infra.parsers.statement_1c import Statement1CParser
 from app.infra.realtime.ws_manager import WsConnectionManager
 from app.infra.security.jwt import JwtService
 from app.infra.security.passwords import Argon2PasswordHasher
-from tests.fakes.pipeline import OFFER_TTL, make_expiration_job, make_pipeline
-from tests.fakes.runtime import NoopLifecycle, RecordingTaskRunner
+from tests.fakes.pipeline import OFFER_TTL
+from tests.fakes.runtime import InMemoryEventBus, NoopLifecycle, RecordingTaskQueue
 from tests.fakes.scenarios import NOW
-from tests.fakes.scoring import FixedScoringEngine
 from tests.fakes.storage import InMemoryFileStorage
 
 JWT_SECRET = "test-secret-" + "x" * 52
@@ -99,15 +98,15 @@ def make_container(
     *,
     fixtures: SyntheticData | None = None,
     failures: MockFailures | None = None,
-    runner: TaskRunner | None = None,
+    queue: TaskQueue | None = None,
     publisher: StatusPublisher | None = None,
-    scoring: ScoringModel | None = None,
     storage: FileStoragePort | None = None,
     demo_mode: bool = False,
 ) -> Container:
     """Тот же набор, что в main.build_container, но без задержек моков и с быстрым argon2.
 
-    Конвейер по умолчанию не запускается сам: задачи копит RecordingTaskRunner.
+    Конвейера в api нет: поставленные задачи копит RecordingTaskQueue, события идут
+    через in-memory шину в WebSocket.
     """
     fixtures = fixtures or SyntheticData.load()
     failures = failures or MockFailures()
@@ -116,16 +115,11 @@ def make_container(
     tokens = jwt_service(clock)
     catalog = load_catalog()
     realtime = WsConnectionManager(uow)
-    publisher = publisher or realtime
-    runner = runner or RecordingTaskRunner()
-    pipeline = make_pipeline(
-        uow=uow,
-        clock=clock,
-        publisher=publisher,
-        scoring=scoring or FixedScoringEngine(),
-        fixtures=fixtures,
-        failures=failures,
-    )
+    if publisher is None:
+        bus = InMemoryEventBus()
+        bus.subscribe(realtime.deliver)
+        publisher = bus
+    queue = queue or RecordingTaskQueue()
     storage = storage or InMemoryFileStorage()
     documents = ContractDocuments(
         renderer=ReportlabContractRenderer(),
@@ -153,10 +147,10 @@ def make_container(
             catalog=catalog,
             registry=registry,
             validator=FormValidator(catalog, registry, turnover),
-            runner=runner,
-            pipeline=pipeline.run,
+            queue=queue,
             publisher=publisher,
             clock=clock,
+            findings=FindingsBuilder(),
             statements=StatementFiles(
                 storage=storage,
                 signatures=MockSignatureAdapter(fixtures, failures),
@@ -171,8 +165,7 @@ def make_container(
             catalog=catalog,
             rates=RatePolicy(),
             reports=ReportBuilder(),
-            runner=runner,
-            pipeline=pipeline.run,
+            queue=queue,
             publisher=publisher,
             clock=clock,
             offer_ttl=OFFER_TTL,
@@ -188,7 +181,6 @@ def make_container(
         ),
         contracts=contracts,
         emulation=EmulationService(uow=uow, contracts=contracts, documents=documents),
-        expiration=make_expiration_job(uow, clock, publisher),
         realtime=realtime,
         mock_failures=failures,
         lifecycle=NoopLifecycle(),

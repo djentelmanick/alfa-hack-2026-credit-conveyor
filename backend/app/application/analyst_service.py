@@ -7,14 +7,18 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from app.application.application_service import PipelineJob, load_history
+from app.application.application_service import (
+    COLLECTING_STATUSES,
+    load_history,
+    start_pipeline,
+)
 from app.application.contract_service import ContractDocuments
 from app.application.report_builder import ApplicationReport, ReportBuilder
 from app.domain.decision import RatePolicy
 from app.domain.entities import Application, AuditEntry, Contract, OfferOption, TokenClaims
 from app.domain.enums import ApplicationStatus, DecisionOutcome, Role, Variant
-from app.domain.errors import FieldError, NotFound, ValidationFailed
-from app.domain.ports import AnalystFilter, Clock, StatusPublisher, TaskRunner, UnitOfWork
+from app.domain.errors import FieldError, InvalidStatus, NotFound, ValidationFailed
+from app.domain.ports import AnalystFilter, Clock, StatusPublisher, TaskQueue, UnitOfWork
 from app.domain.products import LoanProduct, ProductCatalog
 from app.domain.value_objects import Money
 
@@ -67,8 +71,7 @@ class AnalystService:
         catalog: ProductCatalog,
         rates: RatePolicy,
         reports: ReportBuilder,
-        runner: TaskRunner,
-        pipeline: PipelineJob,
+        queue: TaskQueue,
         publisher: StatusPublisher,
         clock: Clock,
         offer_ttl: timedelta,
@@ -79,8 +82,7 @@ class AnalystService:
         self._catalog = catalog
         self._rates = rates
         self._reports = reports
-        self._runner = runner
-        self._pipeline = pipeline
+        self._queue = queue
         self._publisher = publisher
         self._clock = clock
         self._offer_ttl = offer_ttl
@@ -95,6 +97,9 @@ class AnalystService:
     async def report(self, application_id: UUID) -> ApplicationReport:
         async with self._uow() as uow:
             app = await uow.applications.get(application_id)
+            # Отчёт строится только из собранного: пока worker обходит источники, данных ещё нет.
+            if app.status in COLLECTING_STATUSES or not app.snapshots:
+                raise InvalidStatus("Проверка по источникам ещё идёт")
             applicant = await uow.users.get(app.applicant_id)
             history = await load_history(uow, app)
             contract = (
@@ -180,7 +185,7 @@ class AnalystService:
             return {}
 
         app = await self._act(claims, application_id, AuditAction.RECHECK, comment, change)
-        self._runner.enqueue(self._pipeline, app.id)
+        await start_pipeline(self._queue, app)
         return app
 
     async def edit_contract(

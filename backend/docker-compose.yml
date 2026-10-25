@@ -16,6 +16,8 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
     healthcheck:
       # В slim-образе нет curl, а python есть.
       test:
@@ -27,6 +29,41 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # Тот же образ, что у api. Ждёт healthy api: миграции применяет api при старте,
+  # а reconciler и ExpirationJob читают applications сразу.
+  worker:
+    build: .
+    command: ["python", "-m", "app.worker"]
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
+    depends_on:
+      api:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:4.3.7-management-alpine
+    environment:
+      # guest пускают только с localhost, а api и worker подключаются из других контейнеров.
+      RABBITMQ_DEFAULT_USER: app
+      RABBITMQ_DEFAULT_PASS: app
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      # docker exec идёт от root: CLI от root успел бы создать .erlang.cookie раньше брокера,
+      # и брокер (пользователь rabbitmq) не смог бы его прочитать.
+      test: ["CMD", "su-exec", "rabbitmq", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   postgres:
     image: postgres:16.15-alpine3.24
@@ -83,3 +120,4 @@ services:
 volumes:
   postgres-data:
   minio-data:
+  rabbitmq-data:

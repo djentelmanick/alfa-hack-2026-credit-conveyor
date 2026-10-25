@@ -149,7 +149,7 @@ def test_approve_with_failed_source_is_sources_not_ready() -> None:
         approve(app, COMMENT)
 
     assert app.status is S.MANUAL_REVIEW
-    assert app.failed_sources() == [SourceType.BKI]
+    assert app.missing_sources() == [SourceType.BKI]
 
 
 def test_approve_without_any_source_answers_is_sources_not_ready() -> None:

@@ -7,6 +7,7 @@ from app.api.v1.deps import Claims, ClientClaims, get_application_service, get_s
 from app.api.v1.schemas.application import (
     AcceptIn,
     ApplicationCreateIn,
+    ApplicationFindingsOut,
     ApplicationIdIn,
     ApplicationListIn,
     ApplicationOut,
@@ -174,6 +175,20 @@ async def decision(
     body: ApplicationIdIn, claims: ClientClaims, applications: Applications
 ) -> ClientDecisionOut:
     return ClientDecisionOut.from_view(await applications.decision(claims, body.application_id))
+
+
+@router.post(
+    "/findings",
+    summary="Что банк нашёл по источникам",
+    responses={**_READ_ERRORS, 409: {"model": ErrorOut}},
+    response_model_exclude_none=True,
+)
+async def findings(
+    body: ApplicationIdIn, claims: ClientClaims, applications: Applications
+) -> ApplicationFindingsOut:
+    return ApplicationFindingsOut.from_domain(
+        await applications.findings(claims, body.application_id)
+    )
 
 
 @router.post(

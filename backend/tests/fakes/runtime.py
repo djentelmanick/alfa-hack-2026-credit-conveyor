@@ -1,26 +1,91 @@
 """Фейки фоновых задач и публикации событий для тестов без event loop приложения."""
 
-from collections.abc import Awaitable, Callable
-from typing import Any
+import asyncio
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from uuid import UUID
 
 from app.domain.events import ApplicationEvent, StatusChangedEvent
-from app.domain.ports import StatusPublisher, TaskRunner
+from app.domain.ports import PipelineLock, PipelineTask, StatusPublisher, TaskQueue
 from tests.fakes.uow import InMemoryStore
 
 
-class RecordingTaskRunner(TaskRunner):
+class RecordingTaskQueue(TaskQueue):
     """Запоминает задачи, а запускает их только тест: так видно, что именно поставлено в очередь."""
 
     def __init__(self) -> None:
-        self.jobs: list[tuple[Callable[..., Awaitable[None]], tuple[Any, ...]]] = []
+        self.tasks: list[PipelineTask] = []
 
-    def enqueue[*Ts](self, job: Callable[[*Ts], Awaitable[None]], *args: *Ts) -> None:
-        self.jobs.append((job, tuple(args)))
+    async def enqueue(self, task: PipelineTask) -> None:
+        self.tasks.append(task)
 
-    async def run_all(self) -> None:
-        while self.jobs:
-            job, args = self.jobs.pop(0)
-            await job(*args)
+    async def run_all(self, run: Callable[[UUID, UUID], Awaitable[None]]) -> None:
+        while self.tasks:
+            task = self.tasks.pop(0)
+            await run(task.application_id, task.run_id)
+
+
+class FailingTaskQueue(TaskQueue):
+    """Брокер недоступен."""
+
+    async def enqueue(self, task: PipelineTask) -> None:
+        raise ConnectionError("RabbitMQ недоступен")
+
+
+class InMemoryPipelineLock(PipelineLock):
+    def __init__(self) -> None:
+        self.held: set[UUID] = set()
+
+    def hold(self, application_id: UUID) -> AbstractAsyncContextManager[bool]:
+        return self._hold(application_id)
+
+    @asynccontextmanager
+    async def _hold(self, application_id: UUID) -> AsyncIterator[bool]:
+        if application_id in self.held:
+            yield False
+            return
+        self.held.add(application_id)
+        try:
+            yield True
+        finally:
+            self.held.discard(application_id)
+
+
+class InMemoryEventBus(StatusPublisher):
+    """Шина событий вместо fanout RabbitMQ: событие получают все подписчики процесса."""
+
+    def __init__(self) -> None:
+        self._sinks: list[Callable[[ApplicationEvent], Awaitable[None]]] = []
+
+    def subscribe(self, sink: Callable[[ApplicationEvent], Awaitable[None]]) -> None:
+        self._sinks.append(sink)
+
+    async def publish(self, event: ApplicationEvent) -> None:
+        for sink in list(self._sinks):
+            await sink(event)
+
+
+class InProcessTaskQueue(TaskQueue):
+    """Очередь, которая сразу запускает обработчик worker фоновой задачей в том же процессе."""
+
+    def __init__(self) -> None:
+        self._run: Callable[[UUID, UUID], Awaitable[None]] | None = None
+        self._tasks: set[asyncio.Task[None]] = set()
+
+    def bind(self, run: Callable[[UUID, UUID], Awaitable[None]]) -> None:
+        self._run = run
+
+    async def enqueue(self, task: PipelineTask) -> None:
+        if self._run is None:
+            raise RuntimeError("Обработчик worker не подключён")
+        job = asyncio.create_task(self._run(task.application_id, task.run_id))
+        self._tasks.add(job)
+        job.add_done_callback(self._tasks.discard)
+
+    async def shutdown(self) -> None:
+        for job in list(self._tasks):
+            job.cancel()
+        await asyncio.gather(*self._tasks, return_exceptions=True)
 
 
 class RecordingPublisher(StatusPublisher):

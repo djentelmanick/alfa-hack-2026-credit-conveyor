@@ -43,6 +43,7 @@ def _base_settings() -> Settings:
         s3_public_endpoint="http://localhost:9000",
         s3_access_key=SecretStr("test"),
         s3_secret_key=SecretStr("test"),
+        rabbitmq_url="amqp://test:test@localhost:5672/",
         cors_origins=["http://localhost:5173"],
     )
 

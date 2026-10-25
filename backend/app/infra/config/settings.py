@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     offer_ttl_days: int = Field(default=7, gt=0)
     signing_code_ttl_seconds: int = Field(default=300, gt=0)
 
+    rabbitmq_url: str
+    worker_prefetch: int = Field(default=4, gt=0)
+    reconcile_interval_sec: int = Field(default=30, gt=0)
+    pipeline_stale_after_sec: int = Field(default=120, gt=0)
+
     demo_mode: bool = False
     # Нужен только seed.py: пароль тестовых учёток не хранится в коде.
     seed_password: SecretStr | None = None

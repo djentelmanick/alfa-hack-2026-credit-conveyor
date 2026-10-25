@@ -1,7 +1,8 @@
 """Порты домена. Реализации живут в app/infra и подставляются в app/main.py."""
 
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable, Collection, Sequence
+from collections.abc import Collection, Sequence
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from types import TracebackType
@@ -149,6 +150,12 @@ class ApplicationRepository(ABC):
     @abstractmethod
     async def list_by_statuses(self, statuses: Collection[ApplicationStatus]) -> list[Application]:
         """Все заявки в этих статусах, старые сначала."""
+
+    @abstractmethod
+    async def list_stale(
+        self, statuses: Collection[ApplicationStatus], updated_before: datetime
+    ) -> list[Application]:
+        """Заявки в этих статусах, не менявшиеся с updated_before, старые сначала."""
 
     @abstractmethod
     async def list_expired(self, now: datetime) -> list[Application]:
@@ -302,9 +309,24 @@ class StatusPublisher(ABC):
         """Вызывается только после commit. Ошибка доставки не должна ронять вызывающего."""
 
 
-class TaskRunner(ABC):
+@dataclass(frozen=True, slots=True)
+class PipelineTask:
+    """Задача конвейера. run_id отличает прогон после recheck от устаревших задач."""
+
+    application_id: UUID
+    run_id: UUID
+
+
+class TaskQueue(ABC):
     @abstractmethod
-    def enqueue[*Ts](self, job: Callable[[*Ts], Awaitable[None]], *args: *Ts) -> None: ...
+    async def enqueue(self, task: PipelineTask) -> None:
+        """Вызывается после commit. Бросает, если брокер недоступен: заявку подхватит reconciler."""
+
+
+class PipelineLock(ABC):
+    @abstractmethod
+    def hold(self, application_id: UUID) -> AbstractAsyncContextManager[bool]:
+        """False, если заявку уже ведёт другой обработчик."""
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)

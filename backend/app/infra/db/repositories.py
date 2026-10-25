@@ -159,6 +159,19 @@ class SqlApplicationRepository(ApplicationRepository):
         )
         return [self._from_row(row) for row in rows]
 
+    async def list_stale(
+        self, statuses: Collection[ApplicationStatus], updated_before: datetime
+    ) -> list[Application]:
+        rows = await self._session.scalars(
+            select(ApplicationRow)
+            .where(
+                ApplicationRow.status.in_([s.value for s in statuses]),
+                ApplicationRow.updated_at < updated_before,
+            )
+            .order_by(ApplicationRow.updated_at, ApplicationRow.id)
+        )
+        return [self._from_row(row) for row in rows]
+
     async def list_expired(self, now: datetime) -> list[Application]:
         rows = await self._session.scalars(
             select(ApplicationRow)

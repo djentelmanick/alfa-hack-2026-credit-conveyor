@@ -15,7 +15,7 @@ from app.domain.decision import RatePolicy
 from app.domain.entities import Application, TokenClaims
 from app.domain.enums import ApplicationStatus, Role, SourceType, Variant
 from app.domain.errors import InvalidStatus, SourcesNotReady, ValidationFailed
-from app.domain.ports import AnalystFilter
+from app.domain.ports import AnalystFilter, PipelineTask
 from app.domain.value_objects import Money
 from app.infra.config.catalog import load_catalog
 from app.infra.documents import ReportlabContractRenderer
@@ -23,7 +23,7 @@ from tests.fakes.analyst import manual_review_application
 from tests.fakes.auth import FixedClock
 from tests.fakes.context import make_application
 from tests.fakes.pipeline import OFFER_TTL
-from tests.fakes.runtime import RecordingPublisher, RecordingTaskRunner
+from tests.fakes.runtime import RecordingPublisher, RecordingTaskQueue
 from tests.fakes.scenarios import NOW
 from tests.fakes.storage import InMemoryFileStorage
 from tests.fakes.uow import InMemoryStore
@@ -44,20 +44,13 @@ class Harness:
     def __init__(self) -> None:
         self.store = InMemoryStore()
         self.publisher = RecordingPublisher(self.store)
-        self.runner = RecordingTaskRunner()
-        self.pipeline_calls: list[object] = []
-
-        async def pipeline(application_id: object) -> None:
-            self.pipeline_calls.append(application_id)
-
-        self.pipeline = pipeline
+        self.queue = RecordingTaskQueue()
         self.service = AnalystService(
             uow=self.store.uow,
             catalog=load_catalog(),
             rates=RatePolicy(),
             reports=ReportBuilder(),
-            runner=self.runner,
-            pipeline=pipeline,
+            queue=self.queue,
             publisher=self.publisher,
             clock=FixedClock(),
             offer_ttl=OFFER_TTL,
@@ -219,9 +212,8 @@ async def test_recheck_restarts_pipeline_after_commit(h: Harness) -> None:
     result = await h.service.recheck(CLAIMS, app.id, COMMENT)
 
     assert result.status is S.CHECKING
-    assert [args for _, args in h.runner.jobs] == [(app.id,)]
-    await h.runner.run_all()
-    assert h.pipeline_calls == [app.id]
+    assert result.pipeline_run_id is not None
+    assert h.queue.tasks == [PipelineTask(application_id=app.id, run_id=result.pipeline_run_id)]
     (entry,) = h.store.audit.entries
     assert entry.action == AuditAction.RECHECK
     assert h.publisher.statuses() == ["CHECKING"]

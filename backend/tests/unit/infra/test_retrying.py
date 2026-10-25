@@ -79,7 +79,7 @@ async def test_not_found_is_not_retried(fixtures: SyntheticData, failures: MockF
 async def test_broken_mock_exhausts_all_attempts(
     fixtures: SyntheticData, failures: MockFailures
 ) -> None:
-    failures.set(SourceType.EGRUL, KOLOS, enabled=True)
+    await failures.set(SourceType.EGRUL, KOLOS, enabled=True)
     sleep = RecordingSleep()
     gateway = RetryingCompanyRegistry(MockEgrulAdapter(fixtures, failures), POLICY, sleep=sleep)
 

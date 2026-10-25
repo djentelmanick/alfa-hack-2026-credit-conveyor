@@ -649,7 +649,7 @@ type WsClientMessage = { type: 'ping' };
 
 `reason` в `application.status_changed` и истории для системных переходов: `PIPELINE_STARTED`, `CHECKS_PASSED`,
 `SOURCE_UNAVAILABLE` (источник не ответил, ручная проверка), код стоп-фактора, `SCORING_NOT_IMPLEMENTED`,
-`STATEMENT_PERIOD`, причины решения через запятую или `rule_code`, `OFFER_EXPIRED` (прошло 7 дней).
+`PIPELINE_FAILED` (прогон конвейера падал на каждой доставке, ручная проверка), `STATEMENT_PERIOD`, причины решения через запятую или `rule_code`, `OFFER_EXPIRED` (прошло 7 дней).
 
 В контрпредложении у каждого варианта своя ставка по классу риска (`offers[].rate`).
 

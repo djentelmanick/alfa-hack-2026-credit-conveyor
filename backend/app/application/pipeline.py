@@ -1,5 +1,6 @@
 """Асинхронный конвейер заявки: CHECKING, SCORING и решение (BACKEND_SPEC, разделы 6, 7, 11)."""
 
+import asyncio
 import logging
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -9,7 +10,7 @@ from uuid import UUID, uuid4
 
 from app.application.log_context import bind_application
 from app.application.source_payload import to_payload
-from app.domain.checks import PipelineContext, StatementVerifier, StopFactorRule
+from app.domain.checks import CheckingData, PipelineContext, StatementVerifier, StopFactorRule
 from app.domain.decision import DecisionEngine
 from app.domain.entities import (
     Application,
@@ -39,13 +40,14 @@ from app.domain.ports import (
     Clock,
     CompanyRegistryPort,
     CreditBureauPort,
+    PipelineLock,
     RosfinmonitoringPort,
     StatusPublisher,
-    TaskRunner,
     TaxServicePort,
     UnitOfWork,
 )
 from app.domain.scoring import ScoringModel
+from app.domain.value_objects import CreditReport
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,7 @@ S = ApplicationStatus
 
 SCORING_NOT_IMPLEMENTED = "SCORING_NOT_IMPLEMENTED"
 SOURCE_UNAVAILABLE = "SOURCE_UNAVAILABLE"
+PIPELINE_FAILED = "PIPELINE_FAILED"
 PIPELINE_STARTED = "PIPELINE_STARTED"
 CHECKS_PASSED = "CHECKS_PASSED"
 STOP_FACTOR_RULE = "STOP_FACTOR"
@@ -74,8 +77,12 @@ STATEMENT_INFO_MESSAGE = (
     "Загрузите выписку за последние 6–12 месяцев, последняя операция не старше месяца"
 )
 
-# Статусы, в которых заявка ждёт конвейер: после перезапуска процесса их задачи ставятся заново.
+# Статусы, в которых заявка ждёт конвейер: зависшие в них заявки PipelineReconciler ставит заново.
 PIPELINE_STATUSES = frozenset({S.SUBMITTED, S.CHECKING, S.SCORING})
+
+# Сколько ждать блокировку заявки: дольше, чем прогон дописывает события последнего шага.
+LOCK_ATTEMPTS = 10
+LOCK_RETRY_SEC = 1.0
 
 _OUTCOME_STATUS: Mapping[DecisionOutcome, ApplicationStatus] = {
     DecisionOutcome.APPROVED: S.APPROVED,
@@ -100,13 +107,20 @@ class SourcePorts:
 
 @dataclass(frozen=True, kw_only=True, slots=True)
 class CollectedData:
-    """context есть, только если ответили все источники."""
+    """data есть всегда, context только если ответили все источники."""
 
-    context: PipelineContext | None
+    data: CheckingData
     snapshots: tuple[SourceSnapshot, ...]
+    context: PipelineContext | None = None
 
-    def failed_sources(self) -> list[SourceType]:
-        return [s.source for s in self.snapshots if s.status is FetchStatus.FAILED]
+    def missing(self) -> list[SourceType]:
+        """Не ответившие и не запрошенные источники в порядке опроса."""
+        return list(
+            dict.fromkeys(s.source for s in self.snapshots if s.status is not FetchStatus.OK)
+        )
+
+
+SKIPPED_NO_REGISTRY = "Не запрашивали: нет ответа ЕГРЮЛ"
 
 
 class _Fetcher:
@@ -120,7 +134,12 @@ class _Fetcher:
     async def fetch[T](self, source: SourceType, call: Awaitable[T]) -> T | None:
         try:
             value = await call
-        except (SourceUnavailable, NotFound) as exc:
+        except SourceUnavailable as exc:
+            logger.warning("Источник %s не ответил: %s", source, exc.message)
+            error = f"Нет ответа после {self._attempts} попыток"
+            self._record(source, FetchStatus.FAILED, self._attempts, {"error": error})
+            return None
+        except NotFound as exc:
             # NotFound тоже «данных нет»: форма уже проверила ИНН, значит реестр ответил иначе.
             logger.warning("Источник %s не дал данных: %s", source, exc.message)
             self._record(source, FetchStatus.FAILED, self._attempts, {"error": exc.message})
@@ -128,6 +147,9 @@ class _Fetcher:
         # Обёртка с повторами не сообщает, с какой попытки пришёл ответ: важен сам факт ответа.
         self._record(source, FetchStatus.OK, 1, to_payload(value))
         return value
+
+    def skip(self, source: SourceType) -> None:
+        self._record(source, FetchStatus.SKIPPED, 0, {"error": SKIPPED_NO_REGISTRY})
 
     def _record(
         self, source: SourceType, status: FetchStatus, attempts: int, payload: Mapping[str, object]
@@ -163,27 +185,30 @@ class DataCollector:
         p = self._ports
         fetcher = _Fetcher(self._clock, self._retry_attempts)
         inn = app.inn
+        # Форма бизнеса известна из заявки: без ответа ЕГРЮЛ по ней решаем, нужны ли ГИР БО
+        # и запросы по директору.
+        is_llc = app.company_kind is CompanyKind.LLC
 
         await on_step(PipelineStep.EGRUL)
         company = await fetcher.fetch(SourceType.EGRUL, p.registry.find_by_inn(inn))
-        if company is None:
-            # Без ЕГРЮЛ неизвестны директор и учредители, остальные запросы бессмысленны.
-            return CollectedData(context=None, snapshots=tuple(fetcher.snapshots))
-
-        persons = sorted({company.director_inn, *(f.inn for f in company.founders)} - {inn})
         company_consent, personal_consent = _bki_consents(app)
 
         await on_step(PipelineStep.BKI)
         credit_report = await fetcher.fetch(
             SourceType.BKI, p.credit_bureau.report(inn, company_consent)
         )
-        related = []
-        for person in persons:
-            report = await fetcher.fetch(
-                SourceType.BKI, p.credit_bureau.report(person, personal_consent)
-            )
-            if report is not None:
-                related.append(report)
+        related: list[CreditReport] = []
+        if company is not None:
+            persons = sorted({company.director_inn, *(f.inn for f in company.founders)} - {inn})
+            for person in persons:
+                report = await fetcher.fetch(
+                    SourceType.BKI, p.credit_bureau.report(person, personal_consent)
+                )
+                if report is not None:
+                    related.append(report)
+        elif is_llc:
+            # Без ЕГРЮЛ неизвестны директор и учредители.
+            fetcher.skip(SourceType.BKI)
 
         await on_step(PipelineStep.TURNOVER)
         # None здесь законный ответ «счёта у нас нет», сбой виден только по снимку.
@@ -194,7 +219,7 @@ class DataCollector:
         await on_step(PipelineStep.FNS)
         tax = await fetcher.fetch(SourceType.FNS, p.tax.tax_info(inn))
         reported_revenue = None
-        if company.kind is CompanyKind.LLC:
+        if is_llc:
             last_year = self._clock.today().year - 1
             reported_revenue = await fetcher.fetch(
                 SourceType.GIR_BO, p.tax.annual_revenue(inn, last_year)
@@ -203,34 +228,32 @@ class DataCollector:
         await on_step(PipelineStep.FSSP)
         bailiff = await fetcher.fetch(SourceType.FSSP, p.bailiff.open_proceedings(inn))
         director_bailiff = None
-        if company.kind is CompanyKind.LLC:
+        if is_llc and company is not None:
             director_bailiff = await fetcher.fetch(
                 SourceType.FSSP, p.bailiff.open_proceedings(company.director_inn)
             )
+        elif is_llc:
+            fetcher.skip(SourceType.FSSP)
 
         await on_step(PipelineStep.CBR_KYC)
         cbr_level = await fetcher.fetch(SourceType.CBR_KYC, p.cbr.risk_level(inn))
 
+        # Шаг публикуется и без запроса: клиент видит тот же порядок шагов.
         await on_step(PipelineStep.ROSFIN)
-        names = [company.director, *(f.full_name for f in company.founders)]
-        rosfin_hit = await fetcher.fetch(SourceType.ROSFIN, p.rosfin.is_listed(inn, names))
+        rosfin_hit = None
+        if company is not None:
+            names = [company.director, *(f.full_name for f in company.founders)]
+            rosfin_hit = await fetcher.fetch(SourceType.ROSFIN, p.rosfin.is_listed(inn, names))
+        else:
+            # Перечень ищет по ФИО: проверка по одному ИНН дала бы ложное «не найдены».
+            fetcher.skip(SourceType.ROSFIN)
 
         statement = _latest_statement(app.statements)
         if statement is not None:
             await on_step(PipelineStep.STATEMENT)
 
         snapshots = tuple(fetcher.snapshots)
-        if (
-            any(s.status is FetchStatus.FAILED for s in snapshots)
-            or credit_report is None
-            or tax is None
-            or bailiff is None
-            or cbr_level is None
-            or rosfin_hit is None
-        ):
-            return CollectedData(context=None, snapshots=snapshots)
-
-        ctx = PipelineContext(
+        data = CheckingData(
             application=app,
             company=company,
             credit_report=credit_report,
@@ -243,11 +266,42 @@ class DataCollector:
             cbr_level=cbr_level,
             rosfin_hit=rosfin_hit,
             reported_annual_revenue=reported_revenue,
+            missing=frozenset(s.source for s in snapshots if s.status is not FetchStatus.OK),
             now=self._clock.now(),
         )
-        if statement is not None:
-            ctx = replace(ctx, statement_verification=self._verifier.verify(statement, ctx))
-        return CollectedData(context=ctx, snapshots=snapshots)
+        return CollectedData(data=data, snapshots=snapshots, context=self._context(data))
+
+    def _context(self, data: CheckingData) -> PipelineContext | None:
+        """Полный контекст для выписки, скоринга и решения, только если ответили все источники."""
+        if data.missing:
+            return None
+        if (
+            data.company is None
+            or data.credit_report is None
+            or data.tax is None
+            or data.bailiff is None
+            or data.cbr_level is None
+            or data.rosfin_hit is None
+        ):
+            raise ValueError("Все источники ответили, но данных в CheckingData не хватает")
+        ctx = PipelineContext(
+            application=data.application,
+            company=data.company,
+            credit_report=data.credit_report,
+            related_credit_reports=data.related_credit_reports,
+            turnover=data.turnover,
+            statement=data.statement,
+            tax=data.tax,
+            bailiff=data.bailiff,
+            director_bailiff=data.director_bailiff,
+            cbr_level=data.cbr_level,
+            rosfin_hit=data.rosfin_hit,
+            reported_annual_revenue=data.reported_annual_revenue,
+            now=data.now,
+        )
+        if ctx.statement is not None:
+            ctx = replace(ctx, statement_verification=self._verifier.verify(ctx.statement, ctx))
+        return ctx
 
 
 def _bki_consents(app: Application) -> tuple[Consent, Consent]:
@@ -296,10 +350,12 @@ class PipelineOrchestrator:
         scoring: ScoringModel,
         decision: DecisionEngine,
         publisher: StatusPublisher,
+        lock: PipelineLock,
         clock: Clock,
         offer_ttl: timedelta,
     ) -> None:
         self._uow = uow
+        self._lock = lock
         self._collector = collector
         self._stop_rules = tuple(stop_rules)
         self._verifier = verifier
@@ -309,23 +365,69 @@ class PipelineOrchestrator:
         self._clock = clock
         self._offer_ttl = offer_ttl
 
-    async def run(self, application_id: UUID) -> None:
-        with bind_application(application_id):
-            await self._run(application_id)
+    async def run(self, application_id: UUID, run_id: UUID) -> None:
+        """Идемпотентен: повторная доставка и задача устаревшего прогона ничего не дублируют.
 
-    async def _run(self, application_id: UUID) -> None:
+        Бросает NotFound, если заявки нет.
+        """
+        with bind_application(application_id):
+            for _ in range(LOCK_ATTEMPTS):
+                async with self._lock.hold(application_id) as acquired:
+                    if acquired:
+                        await self._run(application_id, run_id)
+                        return
+                # Блокировку может держать прогон, который уже закоммитил итог и дописывает
+                # события, а эта задача от нового прогона после recheck или повторной отправки.
+                # Сразу подтвердить её значило бы потерять прогон до reconciler.
+                await asyncio.sleep(LOCK_RETRY_SEC)
+            logger.info("Заявку %s ведёт другой обработчик, задача пропущена", application_id)
+
+    async def give_up(self, application_id: UUID, run_id: UUID) -> None:
+        """Прогон падает при каждой доставке: отдаём заявку аналитику, а не повторяем бесконечно."""
+        with bind_application(application_id):
+            async with self._lock.hold(application_id) as acquired:
+                if not acquired:
+                    return
+
+                def change(app: Application) -> None:
+                    if app.status not in PIPELINE_STATUSES or app.pipeline_run_id != run_id:
+                        return
+                    now = self._clock.now()
+                    if app.status is S.SUBMITTED:
+                        app.transition_to(
+                            S.CHECKING, actor_id=None, reason=PIPELINE_STARTED, now=now
+                        )
+                    app.add_decision(
+                        _system_decision(
+                            "MANUAL_REVIEW", DecisionOutcome.MANUAL_REVIEW, (PIPELINE_FAILED,), now
+                        )
+                    )
+                    app.transition_to(
+                        S.MANUAL_REVIEW, actor_id=None, reason=PIPELINE_FAILED, now=now
+                    )
+
+                await self._step(application_id, change)
+                logger.error("Заявка %s передана аналитику после сбоев конвейера", application_id)
+
+    async def _run(self, application_id: UUID, run_id: UUID) -> None:
         async with self._uow() as uow:
-            status = (await uow.applications.get(application_id)).status
+            current = await uow.applications.get(application_id)
+        status = current.status
         if status not in PIPELINE_STATUSES:
             logger.info("Заявка %s в статусе %s, конвейер не нужен", application_id, status)
+            return
+        if current.pipeline_run_id != run_id:
+            logger.info(
+                "Задача устаревшего прогона %s для заявки %s пропущена", run_id, application_id
+            )
             return
 
         if status is S.SUBMITTED:
             app = await self._step(application_id, self._to(S.CHECKING, PIPELINE_STARTED))
         else:
-            # Процесс упал посреди конвейера: данные не сохраняются, поэтому собираем их заново.
-            async with self._uow() as uow:
-                app = await uow.applications.get(application_id)
+            # Прогон прервался посреди конвейера: собираем заново,
+            # снимки и проверки этапа заменятся целиком.
+            app = current
 
         collected = await self._collector.collect(app, self._step_publisher(app))
         outcome = self.checking(collected)
@@ -334,18 +436,12 @@ class PipelineOrchestrator:
             return
         await self._score_and_decide(collected.context)
 
-    async def recover(self, runner: TaskRunner) -> int:
-        async with self._uow() as uow:
-            stuck = await uow.applications.list_by_statuses(PIPELINE_STATUSES)
-        for app in stuck:
-            logger.info("Перезапуск конвейера для заявки %s в статусе %s", app.id, app.status)
-            runner.enqueue(self.run, app.id)
-        return len(stuck)
-
     def checking(self, collected: CollectedData) -> CheckingOutcome:
+        # Стоп-факторы считаются всегда: аналитик видит их и при неполных данных.
+        checks = [rule.check(collected.data) for rule in self._stop_rules]
         ctx = collected.context
         if ctx is None:
-            missing = tuple(
+            missing = [
                 CheckResult(
                     code=f"SOURCE_{source}",
                     stage=CheckStage.CHECKING,
@@ -353,11 +449,11 @@ class PipelineOrchestrator:
                     actual="нет данных",
                     outcome=CheckOutcome.NO_DATA,
                 )
-                for source in dict.fromkeys(collected.failed_sources())
-            )
-            return CheckingOutcome(kind=CheckingKind.SOURCE_DOWN, checks=missing)
+                for source in collected.missing()
+            ]
+            # Автоотказа нет даже при сработавшем стоп-факторе: решает аналитик (SCOPE, раздел 4).
+            return CheckingOutcome(kind=CheckingKind.SOURCE_DOWN, checks=(*checks, *missing))
 
-        checks = [rule.check(ctx) for rule in self._stop_rules]
         stop = next((c for c in checks if c.outcome is CheckOutcome.STOP_FACTOR), None)
         if stop is not None:
             return CheckingOutcome(
