@@ -7,9 +7,12 @@ from uuid import uuid4
 import pytest
 
 from app.application.log_context import ApplicationIdFilter
+from app.domain.authority import ApplicantAuthority
 from app.domain.entities import Application, BankStatement, Consent
 from app.domain.enums import (
+    ApplicantRole,
     ApplicationStatus,
+    AuthorityBasis,
     CompanyKind,
     ConsentType,
     SignatureStatus,
@@ -17,11 +20,12 @@ from app.domain.enums import (
 )
 from app.domain.events import StatusChangedEvent
 from app.infra.mocks import MockFailures, SyntheticData
+from app.infra.mocks.synthetic import RosfinPerson
 from tests.fakes.auth import FixedClock
 from tests.fakes.context import make_application, statement_from_raw
 from tests.fakes.pipeline import make_pipeline
 from tests.fakes.runtime import RecordingPublisher
-from tests.fakes.scenarios import IVANOVA, KOLOS, NOW
+from tests.fakes.scenarios import IVANOVA, KHLEBNY_DVOR, KOLOS, NOW
 from tests.fakes.scoring import FixedScoringEngine
 from tests.fakes.uow import InMemoryStore
 
@@ -177,3 +181,50 @@ async def test_pipeline_logs_carry_application_id(
     assert {r.__dict__["application_id"] for r in source_warnings} == {str(app.id)}
     assert ApplicationIdFilter().filter(logging.makeLogRecord({}))
     assert logging.makeLogRecord({}).__dict__.get("application_id") is None
+
+
+@pytest.mark.parametrize(
+    ("authority", "outcome"),
+    [
+        (
+            ApplicantAuthority(
+                role=ApplicantRole.FINANCE_OFFICER,
+                basis=AuthorityBasis.POWER_OF_ATTORNEY,
+                representative_inn="771502345660",
+                representative_name="Васильева Анна Игоревна",
+            ),
+            S.REJECTED,
+        ),
+        (None, S.APPROVED),
+    ],
+)
+async def test_representative_is_checked_against_rosfin_list(
+    fixtures: SyntheticData, authority: ApplicantAuthority | None, outcome: ApplicationStatus
+) -> None:
+    # По 115-ФЗ банк проверяет и представителя клиента, а не только директора и учредителей.
+    listed = RosfinPerson(
+        full_name="ВАСИЛЬЕВА АННА ИГОРЕВНА",
+        list_type="terrorist",
+        entry_date=NOW.date(),
+        reason="синтетика",
+    )
+    rosfin = fixtures.rosfin.model_copy(update={"persons": (*fixtures.rosfin.persons, listed)})
+    data = SyntheticData(
+        fixtures.companies.values(), rosfin, fixtures.passports, fixtures.mchd, fixtures.notary_poa
+    )
+    store = InMemoryStore()
+    publisher = RecordingPublisher(store)
+    pipeline = make_pipeline(
+        uow=store.uow,
+        clock=FixedClock(),
+        publisher=publisher,
+        scoring=FixedScoringEngine(),
+        fixtures=data,
+        failures=MockFailures(),
+    )
+    app = await _submitted(store, inn=KHLEBNY_DVOR)
+    app.authority = authority
+
+    await pipeline.run(app.id, RUN_ID)
+
+    assert publisher.statuses()[-1] is outcome

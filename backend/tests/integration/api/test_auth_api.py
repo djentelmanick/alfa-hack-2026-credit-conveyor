@@ -62,6 +62,33 @@ async def test_register_with_taken_login_is_conflict(client: AsyncClient) -> Non
     assert _error_code(response.json()) == "LOGIN_TAKEN"
 
 
+async def test_register_with_bad_inn_checksum_is_validation_error(client: AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/auth/register", json={**REGISTER_BODY, "inn": "771401234588"}
+    )
+
+    assert response.status_code == 422
+    [detail] = response.json()["error"]["details"]
+    assert (detail["field"], detail["code"]) == ("inn", "INN_INVALID")
+
+
+async def test_register_with_taken_inn_is_conflict(client: AsyncClient) -> None:
+    await client.post("/api/v1/auth/register", json=REGISTER_BODY)
+
+    response = await client.post(
+        "/api/v1/auth/register", json={**REGISTER_BODY, "login": "another-login"}
+    )
+
+    assert response.status_code == 409
+    assert _error_code(response.json()) == "INN_TAKEN"
+
+
+async def test_register_without_inn_is_rejected(client: AsyncClient) -> None:
+    body = {k: v for k, v in REGISTER_BODY.items() if k != "inn"}
+    response = await client.post("/api/v1/auth/register", json=body)
+    assert response.status_code == 422
+
+
 async def test_register_with_invalid_passport_is_validation_error(client: AsyncClient) -> None:
     body = {**REGISTER_BODY, "passport": {**REGISTER_BODY["passport"], "series": "4500"}}
     body["passport"]["number"] = "000000"

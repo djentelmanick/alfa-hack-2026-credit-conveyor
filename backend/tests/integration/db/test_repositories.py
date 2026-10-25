@@ -90,8 +90,8 @@ def assert_same_application(actual: Application, expected: Application) -> None:
         assert getattr(actual, field) == getattr(expected, field), field
 
 
-async def _saved_user(uow: UowFactory, login: str = "kolos") -> User:
-    user = await make_user(login=login)
+async def _saved_user(uow: UowFactory, login: str = "kolos", inn: str | None = None) -> User:
+    user = await make_user(login=login, inn=inn)
     async with uow() as unit:
         await unit.users.add(user)
         await unit.commit()
@@ -255,7 +255,8 @@ async def test_concurrent_registration_with_same_login_is_login_taken(uow: UowFa
 
 async def test_consents_are_stored_per_inn_and_user(uow: UowFactory) -> None:
     user = await _saved_user(uow)
-    other = await _saved_user(uow, login="other")
+    # ИНН в аккаунтах уникален, поэтому второму пользователю нужен свой.
+    other = await _saved_user(uow, login="other", inn="771602345657")
     consent = Consent(type=ConsentType.BKI_PERSONAL, given_by=user.id, given_at=NOW)
 
     async with uow() as unit:
