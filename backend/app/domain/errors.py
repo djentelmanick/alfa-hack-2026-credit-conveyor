@@ -62,6 +62,12 @@ class LoginTaken(DomainError):
     default_message = "Этот логин уже занят"
 
 
+class InnTaken(DomainError):
+    code = "INN_TAKEN"
+    http_status = 409
+    default_message = "Аккаунт с этим ИНН уже есть"
+
+
 class Forbidden(DomainError):
     code = "FORBIDDEN"
     http_status = 403
@@ -71,7 +77,10 @@ class Forbidden(DomainError):
 class NotDirector(DomainError):
     code = "NOT_DIRECTOR"
     http_status = 403
-    default_message = "Подать заявку может только руководитель компании или сам ИП"
+    default_message = (
+        "Подать заявку может руководитель компании, сам ИП "
+        "или представитель по МЧД или нотариальной доверенности"
+    )
 
 
 class NotFound(DomainError):

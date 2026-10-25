@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID
 
+from app.domain.authority import ApplicantAuthority
 from app.domain.enums import CompanyKind, Role
 
 
@@ -17,6 +18,7 @@ class UserCompany:
     name: str
     kind: CompanyKind
     is_director: bool
+    authority: ApplicantAuthority | None = None
 
 
 @dataclass(kw_only=True, eq=False)
@@ -28,6 +30,7 @@ class User:
     full_name: str
     passport_verified: bool
     created_at: datetime
+    inn: str | None = None
     companies: list[UserCompany] = field(default_factory=list)
 
     def link_company(self, company: UserCompany) -> None:

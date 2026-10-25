@@ -10,6 +10,23 @@ if TYPE_CHECKING:
     from app.domain.entities.user import User
 
 _KOPECK = Decimal("0.01")
+_PERSON_INN_WEIGHTS_11 = (7, 2, 4, 10, 3, 5, 9, 4, 6, 8)
+_PERSON_INN_WEIGHTS_12 = (3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8)
+
+
+def is_valid_person_inn(inn: str) -> bool:
+    """ИНН физлица: 12 цифр и два контрольных разряда по алгоритму ФНС."""
+    if len(inn) != 12 or not inn.isascii() or not inn.isdigit():
+        return False
+    digits = [int(c) for c in inn]
+
+    def control(weights: tuple[int, ...]) -> int:
+        return sum(w * d for w, d in zip(weights, digits, strict=False)) % 11 % 10
+
+    return (
+        control(_PERSON_INN_WEIGHTS_11) == digits[10]
+        and control(_PERSON_INN_WEIGHTS_12) == digits[11]
+    )
 
 
 def _to_decimal(value: object) -> Decimal:
@@ -119,6 +136,9 @@ class CompanyProfile:
 
     def is_director(self, user: User) -> bool:
         return user.full_name.casefold() == self.director.casefold()
+
+    def is_founder(self, user: User) -> bool:
+        return user.inn is not None and any(f.inn == user.inn for f in self.founders)
 
     def age_months(self, today: date) -> int:
         return full_months_between(self.registered_at, today)

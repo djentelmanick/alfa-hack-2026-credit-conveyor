@@ -117,6 +117,8 @@ class SourceType(StrEnum):
     CBR_KYC = "CBR_KYC"
     ROSFIN = "ROSFIN"
     BANK_SIGNATURE = "BANK_SIGNATURE"
+    MCHD = "MCHD"
+    NOTARY_POA = "NOTARY_POA"
 
 
 class FetchStatus(StrEnum):
@@ -183,3 +185,33 @@ class RepaymentKind(StrEnum):
 
     PARTIAL = "PARTIAL"
     FULL = "FULL"
+
+
+class ApplicantRole(StrEnum):
+    """Кем заявитель приходится компании: роли из кейса, SOLE_TRADER только для ИП."""
+
+    DIRECTOR = "DIRECTOR"
+    OWNER = "OWNER"
+    FINANCE_OFFICER = "FINANCE_OFFICER"
+    FUNDING_OFFICER = "FUNDING_OFFICER"
+    BANKING_OFFICER = "BANKING_OFFICER"
+    OTHER_AUTHORIZED = "OTHER_AUTHORIZED"
+    SOLE_TRADER = "SOLE_TRADER"
+
+
+class AuthorityBasis(StrEnum):
+    SOLE_TRADER = "SOLE_TRADER"
+    DIRECTOR = "DIRECTOR"
+    POWER_OF_ATTORNEY = "POWER_OF_ATTORNEY"
+
+
+class PoaKind(StrEnum):
+    """Простой письменной доверенности нет намеренно: онлайн её не проверить."""
+
+    MCHD = "MCHD"
+    NOTARIAL = "NOTARIAL"
+
+
+class PoaPower(StrEnum):
+    LOAN_APPLICATION = "LOAN_APPLICATION"
+    LOAN_AGREEMENT_SIGNING = "LOAN_AGREEMENT_SIGNING"
