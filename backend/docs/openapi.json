@@ -3503,6 +3503,7 @@
         "type": "object"
       },
       "ScoringOut": {
+        "description": "Скоринг для клиента: антифрод-факторы (client_visible=False) видит только аналитик.",
         "properties": {
           "factors": {
             "items": {

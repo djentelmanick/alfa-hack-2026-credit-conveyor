@@ -224,6 +224,8 @@ class FactorScoreRow(Base):
     label: Mapped[str] = mapped_column(String(255))
     value: Mapped[str] = mapped_column(String(255))
     points: Mapped[int] = mapped_column(Integer)
+    explanation: Mapped[str] = mapped_column(Text)
+    client_visible: Mapped[bool] = mapped_column(Boolean)
 
 
 class DecisionRow(Base):

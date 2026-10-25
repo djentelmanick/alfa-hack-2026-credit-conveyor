@@ -142,7 +142,17 @@ def _full_application(applicant_id: UUID) -> Application:
         total=100,
         risk_class=RiskClass.A,
         debt_load=0.15,
-        factors=(FactorScore("AGE", "Возраст бизнеса", "7 лет", 20),),
+        factors=(
+            FactorScore("AGE", "Возраст бизнеса", "7 лет", 20, explanation="Бизнесу больше 3 лет"),
+            FactorScore(
+                "MASS_ADDRESS",
+                "Адрес массовой регистрации",
+                "да",
+                -10,
+                explanation="Адрес массовой регистрации",
+                client_visible=False,
+            ),
+        ),
     )
     app.transition_to(ApplicationStatus.SCORING, actor_id=None, reason="скоринг", now=NOW)
     app.transition_to(ApplicationStatus.MANUAL_REVIEW, actor_id=None, reason="залог", now=NOW)

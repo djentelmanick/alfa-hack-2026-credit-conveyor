@@ -227,6 +227,8 @@ class KeyFactorOut(BaseModel):
 
 
 class ScoringOut(BaseModel):
+    """Скоринг для клиента: антифрод-факторы (client_visible=False) видит только аналитик."""
+
     total: int
     risk_class: RiskClass
     factors: list[FactorScoreOut]
@@ -239,6 +241,7 @@ class ScoringOut(BaseModel):
             factors=[
                 FactorScoreOut(code=f.code, label=f.label, value=f.value, points=f.points)
                 for f in s.factors
+                if f.client_visible
             ],
         )
 
@@ -265,11 +268,13 @@ class ClientDecisionOut(BaseModel):
     def from_view(cls, view: DecisionView) -> Self:
         d = view.decision
         codes = d.reasons or (d.rule_code,)
-        factors = view.scoring.factors if view.scoring else ()
+        factors = [f for f in view.scoring.factors if f.client_visible] if view.scoring else []
         key = sorted((f for f in factors if f.points), key=lambda f: -abs(f.points))
+        # Отказ по классу D называет факторы, снизившие балл: их текст даёт сама модель скоринга.
+        explained = {f.code: f.explanation or f.label for f in factors}
         return cls(
             outcome=d.outcome,
-            reasons=[reason_label(code) for code in codes],
+            reasons=[explained.get(code) or reason_label(code) for code in codes],
             key_factors=[KeyFactorOut(label=f.label, points=f.points) for f in key][
                 :KEY_FACTORS_LIMIT
             ],
