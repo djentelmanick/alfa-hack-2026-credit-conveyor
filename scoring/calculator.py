@@ -87,6 +87,7 @@ def _business_age(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         value=f"{months} мес.",
         description="Возраст бизнеса",
         explanation=explanation,
+        client_visible=True,
     )
 
 
@@ -122,6 +123,7 @@ def _debt_load(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         value=f"{pct}%",
         description="Долговая нагрузка",
         explanation=explanation,
+        client_visible=True,
     )
 
 
@@ -152,6 +154,7 @@ def _loan_to_revenue(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         value=f"{pct}%",
         description="Сумма заявки / годовая выручка",
         explanation=explanation,
+        client_visible=True,
     )
 
 
@@ -182,6 +185,7 @@ def _credit_history(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         value=labels[status],
         description="Кредитная история",
         explanation=explanations[status],
+        client_visible=True,
     )
 
 
@@ -194,6 +198,7 @@ def _closed_credits(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         value="есть" if has else "нет",
         description="Закрытые кредиты без просрочек",
         explanation="Есть успешно закрытые кредиты" if has else "Нет закрытых кредитов",
+        client_visible=True,
     )
 
 
@@ -221,6 +226,7 @@ def _industry_risk(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         value=f"{labels[risk]} ({inp.okved_code})",
         description="Отраслевой риск",
         explanation=explanations[risk],
+        client_visible=True,
     )
 
 
@@ -233,6 +239,7 @@ def _revenue_dynamics(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
             value="недостаточно данных",
             description="Динамика выручки",
             explanation="Недостаточно данных для оценки динамики",
+            client_visible=True,
         )
 
     if inp.prev_2q_revenue <= 0:
@@ -243,6 +250,7 @@ def _revenue_dynamics(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
             value="нет базы для сравнения",
             description="Динамика выручки",
             explanation="Недостаточно данных для оценки динамики",
+            client_visible=True,
         )
 
     change = (inp.last_2q_revenue - inp.prev_2q_revenue) / inp.prev_2q_revenue
@@ -263,6 +271,7 @@ def _revenue_dynamics(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         value=f"{pct:+}%",
         description="Динамика выручки",
         explanation=explanation,
+        client_visible=True,
     )
 
 
@@ -275,6 +284,7 @@ def _mass_address(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         value="да" if hit else "нет",
         description="Адрес массовой регистрации",
         explanation="Адрес массовой регистрации" if hit else "Адрес не массовый",
+        client_visible=False,
     )
 
 
@@ -287,6 +297,7 @@ def _mass_director(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         value="да" if hit else "нет",
         description="Массовый руководитель или учредитель",
         explanation="Руководитель или учредитель является массовым" if hit else "Руководитель и учредитель не массовые",
+        client_visible=False,
     )
 
 
@@ -300,4 +311,5 @@ def _credit_inquiries(inp: ScoringInput, cfg: ScoringConfig) -> FactorResult:
         value=str(count),
         description="Обращения за кредитами за 3 месяца",
         explanation="Частые обращения за кредитами" if over else "Нет частых обращений за кредитами",
+        client_visible=False,
     )

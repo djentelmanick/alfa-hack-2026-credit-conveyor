@@ -62,6 +62,7 @@ class FactorResult:
     value: str
     description: str
     explanation: str
+    client_visible: bool
 
 
 @dataclass(frozen=True)
