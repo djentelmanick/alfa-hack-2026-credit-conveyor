@@ -54,6 +54,12 @@ CLIENTS = {
     "ivanova": ("Иванова Елена Сергеевна", IVANOVA, "ИП ИВАНОВА ЕЛЕНА СЕРГЕЕВНА", CompanyKind.IE),
     "techprom": ("Кузнецов Игорь Валентинович", TECHPROM, 'ООО "ТЕХПРОМ"', CompanyKind.LLC),
 }
+# Представители: компании не привязаны, доверенность прикладывают в сценарии.
+REPRESENTATIVES = {
+    "buh": "Васильева Анна Игоревна",
+    "petrova": "Петрова Мария Сергеевна",
+    "lebedev": "Лебедев Павел Олегович",
+}
 ANALYST = "analyst"
 
 
@@ -77,6 +83,8 @@ async def _reset_and_seed(url: str) -> None:
                 await uow.users.add(
                     await make_user(login=login, full_name=full_name, companies=(company,))
                 )
+            for login, full_name in REPRESENTATIVES.items():
+                await uow.users.add(await make_user(login=login, full_name=full_name))
             await uow.users.add(
                 await make_user(login=ANALYST, role=Role.ANALYST, full_name="Орлова Мария Игоревна")
             )

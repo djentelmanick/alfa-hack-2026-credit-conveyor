@@ -52,7 +52,9 @@ async def test_each_seed_account_can_log_in(
         "/api/v1/auth/me", headers={"Authorization": f"Bearer {body['access_token']}"}
     )
     assert me.json() == body["user"]
-    if claims.role is Role.ANALYST:
+    assert body["user"]["inn"] == account.person_inn
+    if claims.role is Role.ANALYST or account.company_inn is None:
+        # Аналитик компаний не ведёт, представитель привязывает компанию сам по доверенности.
         assert body["user"]["companies"] == []
     else:
         # Руководитель видит свою компанию сразу после входа и может по ней подать заявку.

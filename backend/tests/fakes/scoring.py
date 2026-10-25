@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from app.domain.checks import PipelineContext
 from app.domain.enums import RiskClass
 from app.domain.scoring import FactorScore, ScoringModel, ScoringResult
-from tests.fakes.scenarios import IVANOVA, KOLOS, SOKOLOV, TECHPROM
+from tests.fakes.scenarios import IVANOVA, KHLEBNY_DVOR, KOLOS, PETROVYKH, SOKOLOV, TECHPROM
 
 
 def _factors(*points: int) -> tuple[FactorScore, ...]:
@@ -32,6 +32,13 @@ SCOPE_RESULTS: Mapping[str, ScoringResult] = {
     ),
     IVANOVA: ScoringResult(
         total=50, risk_class=RiskClass.B, debt_load=0.13, factors=_factors(10, 25, 15, 0, 0, 0)
+    ),
+    # Компании представителей скопированы с «Колоса» и получают его результат.
+    KHLEBNY_DVOR: ScoringResult(
+        total=90, risk_class=RiskClass.A, debt_load=0.12, factors=_factors(20, 25, 15, 20, 10, 0)
+    ),
+    PETROVYKH: ScoringResult(
+        total=90, risk_class=RiskClass.A, debt_load=0.12, factors=_factors(20, 25, 15, 20, 10, 0)
     ),
     TECHPROM: ScoringResult(
         total=100, risk_class=RiskClass.A, debt_load=0.15, factors=_factors(20, 25, 15, 20, 10, 10)

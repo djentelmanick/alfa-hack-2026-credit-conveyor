@@ -38,6 +38,10 @@ SEED_ACCOUNTS = (
     SeedAccount(
         "techprom", "Кузнецов Игорь Валентинович", Role.CLIENT, "770623456765", "7704123450"
     ),
+    # Представители без привязки компании: её делают сами, приложив доверенность в анкете.
+    SeedAccount("buh", "Васильева Анна Игоревна", Role.CLIENT, "771502345660"),
+    SeedAccount("petrova", "Петрова Мария Сергеевна", Role.CLIENT, "771402345674"),
+    SeedAccount("lebedev", "Лебедев Павел Олегович", Role.CLIENT, "770734567870"),
     SeedAccount("analyst", "Орлова Мария Игоревна", Role.ANALYST),
 )
 
