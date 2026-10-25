@@ -150,6 +150,7 @@ def build_pipeline(
     scoring: ScoringModel | None = None,
 ) -> PipelineOrchestrator:
     verifier = StatementVerifier(default_authenticity_strategies())
+    scoring = scoring or ScoringEngine(catalog)
     return PipelineOrchestrator(
         uow=uow,
         collector=DataCollector(
@@ -157,9 +158,10 @@ def build_pipeline(
         ),
         stop_rules=default_stop_rules(catalog),
         verifier=verifier,
-        scoring=scoring or ScoringEngine(),
+        scoring=scoring,
         decision=DecisionEngine(
-            default_decision_rules(catalog, RatePolicy()), default_manual_review_triggers()
+            default_decision_rules(catalog, RatePolicy(), scoring),
+            default_manual_review_triggers(),
         ),
         publisher=publisher,
         lock=PgAdvisoryPipelineLock(engine),

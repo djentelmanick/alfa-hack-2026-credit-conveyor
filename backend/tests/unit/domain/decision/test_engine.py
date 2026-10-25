@@ -16,7 +16,7 @@ from app.domain.decision import (
 )
 from app.domain.enums import DecisionOutcome, RiskClass, Variant
 from app.domain.products import ProductCatalog
-from app.domain.scoring import ScoringResult
+from app.domain.scoring import ScoringEngine, ScoringResult
 from tests.fakes.context import make_application, make_collateral, make_context, make_turnover
 
 
@@ -34,12 +34,15 @@ def _over_revenue_limit() -> PipelineContext:
 @pytest.fixture
 def engine(catalog: ProductCatalog) -> DecisionEngine:
     return DecisionEngine(
-        default_decision_rules(catalog, RatePolicy()), default_manual_review_triggers()
+        default_decision_rules(catalog, RatePolicy(), ScoringEngine(catalog)),
+        default_manual_review_triggers(),
     )
 
 
 def test_default_rules_are_in_scope_order(catalog: ProductCatalog) -> None:
-    rules = sorted(default_decision_rules(catalog, RatePolicy()), key=lambda r: r.order)
+    rules = sorted(
+        default_decision_rules(catalog, RatePolicy(), ScoringEngine(catalog)), key=lambda r: r.order
+    )
     assert [type(r) for r in rules] == [
         ManualReviewRule,
         ClassDRejectRule,
@@ -52,7 +55,7 @@ def test_default_rules_are_in_scope_order(catalog: ProductCatalog) -> None:
 
 
 def test_order_comes_from_rule_not_from_list_position(catalog: ProductCatalog) -> None:
-    rules = default_decision_rules(catalog, RatePolicy())
+    rules = default_decision_rules(catalog, RatePolicy(), ScoringEngine(catalog))
     shuffled = [rules[i] for i in (4, 2, 5, 0, 3, 1)]
     engine = DecisionEngine(shuffled, default_manual_review_triggers())
     ctx = make_context(application=make_application(amount="8000000"))

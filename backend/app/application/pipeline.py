@@ -31,7 +31,7 @@ from app.domain.enums import (
     PipelineStep,
     SourceType,
 )
-from app.domain.errors import NotFound, ScoringNotImplemented, SourceUnavailable
+from app.domain.errors import NotFound, SourceUnavailable
 from app.domain.events import PipelineStepEvent
 from app.domain.ports import (
     AccountTurnoverPort,
@@ -53,7 +53,6 @@ logger = logging.getLogger(__name__)
 
 S = ApplicationStatus
 
-SCORING_NOT_IMPLEMENTED = "SCORING_NOT_IMPLEMENTED"
 SOURCE_UNAVAILABLE = "SOURCE_UNAVAILABLE"
 PIPELINE_FAILED = "PIPELINE_FAILED"
 PIPELINE_STARTED = "PIPELINE_STARTED"
@@ -525,27 +524,7 @@ class PipelineOrchestrator:
 
     async def _score_and_decide(self, ctx: PipelineContext) -> None:
         application_id = ctx.application.id
-        try:
-            scoring = self._scoring.score(ctx)
-        except ScoringNotImplemented:
-            # Модели пока нет (BACKEND_SPEC, раздел 7): решение принимает аналитик.
-            def to_manual(app: Application) -> None:
-                now = self._clock.now()
-                app.add_decision(
-                    _system_decision(
-                        "MANUAL_REVIEW",
-                        DecisionOutcome.MANUAL_REVIEW,
-                        (SCORING_NOT_IMPLEMENTED,),
-                        now,
-                    )
-                )
-                app.transition_to(
-                    S.MANUAL_REVIEW, actor_id=None, reason=SCORING_NOT_IMPLEMENTED, now=now
-                )
-
-            await self._step(application_id, to_manual)
-            return
-
+        scoring = self._scoring.score(ctx)
         decision = self._decision.decide(ctx, scoring)
         target = _OUTCOME_STATUS.get(decision.outcome)
         if target is None:

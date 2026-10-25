@@ -9,6 +9,8 @@ class FactorScore:
     label: str
     value: str
     points: int
+    explanation: str = ""
+    client_visible: bool = True
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)

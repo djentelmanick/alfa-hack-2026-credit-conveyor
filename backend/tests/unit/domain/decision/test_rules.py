@@ -1,6 +1,9 @@
 """Правила кредитного решения SCOPE раздел 6, каждое отдельно."""
 
+from dataclasses import replace
+from datetime import date
 from decimal import Decimal
+from typing import Any
 
 import pytest
 
@@ -14,11 +17,19 @@ from app.domain.decision import (
     RatePolicy,
     RevenueLimitCounterOfferRule,
 )
+from app.domain.decision.rules import NO_COUNTER_OFFER_AVAILABLE
 from app.domain.enums import DecisionOutcome, RiskClass, Variant
 from app.domain.products import ProductCatalog
-from app.domain.scoring import FactorScore, ScoringResult
+from app.domain.scoring import FactorScore, ScoringEngine, ScoringResult
 from app.domain.value_objects import Money
-from tests.fakes.context import make_application, make_context, make_turnover
+from tests.fakes.context import (
+    COMPANY_INN,
+    clean_report,
+    make_application,
+    make_company,
+    make_context,
+    make_turnover,
+)
 from tests.fakes.scenarios import NOW
 
 
@@ -97,6 +108,31 @@ def test_class_d_reject_explains_worst_factors(catalog: ProductCatalog, rates: R
     assert decision.outcome is DecisionOutcome.REJECTED
     assert decision.rate is None
     assert decision.reasons == ("DEBT_LOAD", "CREDIT_HISTORY")
+
+
+def test_class_d_reject_hides_antifraud_factors(catalog: ProductCatalog, rates: RatePolicy) -> None:
+    scoring = _scoring(
+        RiskClass.D,
+        FactorScore(
+            code="MASS_ADDRESS", label="Адрес", value="да", points=-10, client_visible=False
+        ),
+        FactorScore(code="DEBT_LOAD", label="Нагрузка", value="55%", points=-15),
+    )
+    decision = ClassDRejectRule(catalog, rates).apply(_ctx(), scoring, [])
+    assert decision.reasons == ("DEBT_LOAD",)
+
+
+def test_class_d_reject_with_only_antifraud_factors_gives_generic_reason(
+    catalog: ProductCatalog, rates: RatePolicy
+) -> None:
+    scoring = _scoring(
+        RiskClass.D,
+        FactorScore(
+            code="MASS_DIRECTOR", label="Руководитель", value="да", points=-10, client_visible=False
+        ),
+    )
+    decision = ClassDRejectRule(catalog, rates).apply(_ctx(), scoring, [])
+    assert decision.reasons == ("RISK_CLASS_D",)
 
 
 # --- 3. Лимит от выручки ---
@@ -179,28 +215,84 @@ def test_class_approve(
 # --- 6. Класс C ---
 
 
-def test_class_c_matches_only_class_c(catalog: ProductCatalog, rates: RatePolicy) -> None:
-    rule = ClassCCounterOfferRule(catalog, rates)
-    for other in RiskClass:
-        assert rule.matches(_ctx(), _scoring(other), []) is (other is RiskClass.C)
+@pytest.fixture
+def scoring_engine(catalog: ProductCatalog) -> ScoringEngine:
+    return ScoringEngine(catalog)
 
 
-def test_class_c_offers_longer_term_and_collateral(
-    catalog: ProductCatalog, rates: RatePolicy
-) -> None:
-    decision = ClassCCounterOfferRule(catalog, rates).apply(_ctx(), _scoring(RiskClass.C), [])
-    assert decision.outcome is DecisionOutcome.COUNTER_OFFER
-    assert decision.rate == Decimal("29.5")
-    assert [(o.variant, o.amount, o.term_months, o.rate) for o in decision.offers] == [
-        (Variant.UNSECURED, Money.of("2000000"), 60, Decimal("29.5")),
-        (Variant.SECURED, Money.of("2000000"), 12, Decimal("27.5")),
-    ]
+@pytest.fixture
+def class_c_rule(
+    catalog: ProductCatalog, rates: RatePolicy, scoring_engine: ScoringEngine
+) -> ClassCCounterOfferRule:
+    return ClassCCounterOfferRule(catalog, rates, scoring_engine)
 
 
-def test_class_c_at_max_term_offers_only_collateral(
-    catalog: ProductCatalog, rates: RatePolicy
-) -> None:
-    decision = ClassCCounterOfferRule(catalog, rates).apply(
-        _ctx(term_months=60), _scoring(RiskClass.C), []
+def _class_c_ctx(
+    amount: str, term_months: int, monthly_payments: str = "0", **company: Any
+) -> PipelineContext:
+    """Нет кредитной истории и закрытых кредитов, выручка 1 млн в месяц."""
+    return make_context(
+        application=make_application(amount=amount, term_months=term_months),
+        company=make_company(**company),
+        credit_report=clean_report(
+            COMPANY_INN,
+            has_history=False,
+            has_closed_loans_without_overdue=False,
+            monthly_payments=Money.of(monthly_payments),
+        ),
+        turnover=make_turnover(monthly="1000000"),
     )
-    assert [o.variant for o in decision.offers] == [Variant.SECURED]
+
+
+def _rescored(
+    engine: ScoringEngine, ctx: PipelineContext, amount: str, term_months: int
+) -> RiskClass:
+    return engine.score(
+        replace(ctx, application=make_application(amount=amount, term_months=term_months))
+    ).risk_class
+
+
+def test_class_c_matches_only_class_c(class_c_rule: ClassCCounterOfferRule) -> None:
+    for other in RiskClass:
+        assert class_c_rule.matches(_ctx(), _scoring(other), []) is (other is RiskClass.C)
+
+
+def test_class_c_offers_max_amount_and_min_term_for_class_b(
+    class_c_rule: ClassCCounterOfferRule, scoring_engine: ScoringEngine
+) -> None:
+    ctx = _class_c_ctx("2000000", 12, monthly_payments="50000")
+    assert scoring_engine.score(ctx).risk_class is RiskClass.C
+
+    decision = class_c_rule.apply(ctx, scoring_engine.score(ctx), [])
+
+    assert decision.outcome is DecisionOutcome.COUNTER_OFFER
+    assert decision.rate == Decimal("26.5")
+    assert [(o.variant, o.amount, o.term_months, o.rate) for o in decision.offers] == [
+        (Variant.UNSECURED, Money.of("1500000"), 12, Decimal("26.5")),
+        (Variant.UNSECURED, Money.of("2000000"), 16, Decimal("26.5")),
+    ]
+    # Подобранные условия на границе: шаг дальше обратно даёт класс C.
+    assert _rescored(scoring_engine, ctx, "1600000", 12) is RiskClass.C
+    assert _rescored(scoring_engine, ctx, "2000000", 15) is RiskClass.C
+
+
+def test_class_c_offers_only_lower_amount_when_term_does_not_help(
+    class_c_rule: ClassCCounterOfferRule, scoring_engine: ScoringEngine
+) -> None:
+    ctx = _class_c_ctx("4000000", 36, monthly_payments="100000")
+    decision = class_c_rule.apply(ctx, scoring_engine.score(ctx), [])
+    assert [(o.amount, o.term_months) for o in decision.offers] == [(Money.of("2500000"), 36)]
+
+
+def test_class_c_goes_to_analyst_when_class_b_is_unreachable(
+    class_c_rule: ClassCCounterOfferRule, scoring_engine: ScoringEngine
+) -> None:
+    # Молодой бизнес в отрасли высокого риска: даже минимальная сумма не поднимает до B.
+    ctx = _class_c_ctx("3000000", 60, okved="41.20", registered_at=date(2025, 3, 1))
+    assert scoring_engine.score(ctx).risk_class is RiskClass.C
+
+    decision = class_c_rule.apply(ctx, scoring_engine.score(ctx), [])
+
+    assert decision.outcome is DecisionOutcome.MANUAL_REVIEW
+    assert decision.reasons == (NO_COUNTER_OFFER_AVAILABLE,)
+    assert decision.offers == ()
