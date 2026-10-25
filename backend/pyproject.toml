@@ -1,0 +1,76 @@
+[project]
+name = "credit-conveyor-backend"
+version = "0.1.0"
+description = "Бэкенд умного кредитного кабинета предпринимателя"
+requires-python = ">=3.15"
+dependencies = [
+    "fastapi>=0.162.0",
+    "uvicorn[standard]>=0.54.0",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.1",
+    "sqlalchemy[asyncio]>=2.1.6",
+    "asyncpg>=0.32.0",
+    "alembic>=1.20.1",
+    "aioboto3>=15.5.0",
+    "pyjwt>=2.15.1",
+    "argon2-cffi>=25.1.0",
+    "pyyaml>=6.0.3",
+    "python-multipart>=0.0.32",
+    "reportlab>=5.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "httpx>=0.28.1",
+    "ruff>=0.17.2",
+    "mypy>=2.4.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py315"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "ASYNC", "S", "SIM", "RUF", "DTZ", "T20", "PT"]
+# RUF001-003 считают кириллицу «похожими на латиницу» символами, а сообщения и комментарии у нас на русском.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+# В тестах пароли и секреты намеренно фиктивные и записаны прямо в коде.
+"tests/**" = ["S101", "S105", "S106"]
+# Имена доменных исключений заданы в BACKEND_SPEC, раздел 18, и совпадают с кодами ошибок API.
+"app/domain/errors.py" = ["N818"]
+
+[tool.mypy]
+python_version = "3.15"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["app"]
+
+# У aioboto3, aiobotocore и botocore нет py.typed, а пакеты стабов в стек не входят.
+[[tool.mypy.overrides]]
+module = ["aioboto3", "aioboto3.*", "aiobotocore", "aiobotocore.*", "botocore", "botocore.*"]
+ignore_missing_imports = true
+
+# У PyYAML нет py.typed, а types-PyYAML в стек не входит. Нужен только safe_load в загрузчике каталога.
+[[tool.mypy.overrides]]
+module = ["yaml"]
+ignore_missing_imports = true
+
+# У reportlab нет py.typed, а types-reportlab в стек не входит. Используется только в contract_pdf.py.
+[[tool.mypy.overrides]]
+module = ["reportlab", "reportlab.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra"

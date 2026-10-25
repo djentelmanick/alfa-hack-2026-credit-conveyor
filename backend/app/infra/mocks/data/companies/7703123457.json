@@ -1,0 +1,341 @@
+{
+  "egrul": {
+    "inn": "7703123457",
+    "ogrn": "1167700543218",
+    "ogrnip": null,
+    "full_name": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ \"РОМАШКА\"",
+    "short_name": "ООО \"РОМАШКА\"",
+    "kpp": "770301001",
+    "registration_date": "2016-03-01",
+    "status": "liquidated",
+    "address": "123001, Г.МОСКВА, УЛ. САДОВАЯ-КУДРИНСКАЯ, Д. 20, ОФИС 4",
+    "entity_type": "legal",
+    "authorized_capital": 10000,
+    "director": {
+      "full_name": "СМИРНОВА ОЛЬГА ВИКТОРОВНА",
+      "inn": "770312345678",
+      "position": "ГЕНЕРАЛЬНЫЙ ДИРЕКТОР",
+      "record_date": "2016-03-01"
+    },
+    "founders": [
+      {
+        "full_name": "СМИРНОВА ОЛЬГА ВИКТОРОВНА",
+        "inn": "770312345678",
+        "share_percent": 100,
+        "share_amount": 10000,
+        "record_date": "2016-03-01"
+      }
+    ],
+    "primary_okved": {
+      "code": "46.90",
+      "name": "Торговля оптовая неспециализированная"
+    },
+    "additional_okveds": [],
+    "has_unreliable_info": false,
+    "unreliable_fields": []
+  },
+  "bki": [
+    {
+      "subject_inn": "7703123457",
+      "subject_type": "company",
+      "report_date": "2026-10-24",
+      "credits": [
+        {
+          "contract_id": "КД-2020-007781",
+          "creditor_name": "АО \"СЕВЕРНЫЙ БАНК\"",
+          "credit_type": "credit",
+          "amount": 500000,
+          "balance": 0,
+          "monthly_payment": 0,
+          "opened_date": "2020-01-15",
+          "closed_date": "2021-01-15",
+          "status": "closed",
+          "overdue_days": 0,
+          "overdue_amount": 0,
+          "max_overdue_days_12m": 0,
+          "had_overdue_30plus_12m": false
+        }
+      ],
+      "inquiries": [],
+      "summary": {
+        "total_monthly_payments": 0,
+        "has_current_overdue_30plus": false,
+        "has_closed_without_overdue": true,
+        "worst_status_12m": "clean",
+        "inquiries_last_3m": 0,
+        "has_history": true
+      }
+    },
+    {
+      "subject_inn": "770312345678",
+      "subject_type": "person",
+      "report_date": "2026-10-24",
+      "credits": [],
+      "inquiries": [],
+      "summary": {
+        "total_monthly_payments": 0,
+        "has_current_overdue_30plus": false,
+        "has_closed_without_overdue": false,
+        "worst_status_12m": "clean",
+        "inquiries_last_3m": 0,
+        "has_history": false
+      }
+    }
+  ],
+  "turnover": {
+    "inn": "7703123457",
+    "has_account": true,
+    "months": [
+      {
+        "month": "2025-10-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      },
+      {
+        "month": "2025-11-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      },
+      {
+        "month": "2025-12-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      },
+      {
+        "month": "2026-01-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      },
+      {
+        "month": "2026-02-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      },
+      {
+        "month": "2026-03-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      },
+      {
+        "month": "2026-04-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      },
+      {
+        "month": "2026-05-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      },
+      {
+        "month": "2026-06-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      },
+      {
+        "month": "2026-07-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      },
+      {
+        "month": "2026-08-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      },
+      {
+        "month": "2026-09-01",
+        "incoming": 500000,
+        "outgoing": 440000,
+        "top_payers": [
+          {
+            "name": "ООО \"ПРОДУКТЫ РЯДОМ\"",
+            "inn": "7714023454",
+            "amount": 200000,
+            "share_percent": 40.0
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "annual_revenue": 6000000,
+      "avg_monthly_revenue": 500000
+    }
+  },
+  "fns_transparent": {
+    "inn": "7703123457",
+    "accounts_blocked": false,
+    "mass_address": false,
+    "address_company_count": null,
+    "director": {
+      "full_name": "СМИРНОВА ОЛЬГА ВИКТОРОВНА",
+      "inn": "770312345678",
+      "company_count": 1,
+      "is_mass": false
+    },
+    "director_disqualified": false,
+    "disqualification_period": null,
+    "founders": [
+      {
+        "full_name": "СМИРНОВА ОЛЬГА ВИКТОРОВНА",
+        "inn": "770312345678",
+        "company_count": 1,
+        "is_mass": false
+      }
+    ],
+    "has_mass_founder": false,
+    "tax_debt_enforcement": 0,
+    "tax_debt_enforcement_date": "2026-10-01",
+    "arrears_and_penalties": 0,
+    "arrears_and_penalties_date": "2026-09-01",
+    "tax_reporting_missing": false,
+    "employee_count": 3,
+    "employee_count_year": 2025,
+    "taxes_paid": 300000,
+    "revenue_accounting": 5800000,
+    "expense_accounting": 5600000
+  },
+  "gir_bo": {
+    "2025": {
+      "inn": "7703123457",
+      "company_name": "ООО \"РОМАШКА\"",
+      "year": 2025,
+      "unit": "thousands",
+      "balance": {
+        "total_assets": 2900,
+        "fixed_assets": 966,
+        "inventories": 290,
+        "cash": 232,
+        "financial_assets": 725,
+        "equity": 1933,
+        "long_term_debt": 580,
+        "short_term_payables": 644
+      },
+      "income_statement": {
+        "revenue": 5800,
+        "expenses": 5104,
+        "other_income": 0,
+        "other_expenses": 58,
+        "income_tax": 116,
+        "net_profit": 522
+      },
+      "previous_year": {
+        "revenue": 6200,
+        "net_profit": 496
+      },
+      "report_date": "2026-03-31",
+      "signed_by": "Смирнова Ольга Викторовна",
+      "requires_audit": false
+    }
+  },
+  "fssp": [
+    {
+      "subject": "ООО \"РОМАШКА\"",
+      "subject_inn": "7703123457",
+      "search_type": "company",
+      "cases": [],
+      "total_active_amount": 0,
+      "has_active_cases": false
+    },
+    {
+      "subject": "СМИРНОВА ОЛЬГА ВИКТОРОВНА",
+      "subject_inn": "770312345678",
+      "search_type": "person",
+      "cases": [],
+      "total_active_amount": 0,
+      "has_active_cases": false
+    }
+  ],
+  "cbr_kyc": {
+    "inn": "7703123457",
+    "risk_level": "green",
+    "risk_level_date": "2026-10-15",
+    "entity_type": "legal"
+  }
+}

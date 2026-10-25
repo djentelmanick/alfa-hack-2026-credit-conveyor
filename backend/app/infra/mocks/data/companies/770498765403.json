@@ -1,0 +1,261 @@
+{
+  "egrul": {
+    "inn": "770498765403",
+    "ogrn": null,
+    "ogrnip": "322774600123452",
+    "full_name": "СОКОЛОВ ДМИТРИЙ АНДРЕЕВИЧ",
+    "short_name": null,
+    "kpp": null,
+    "registration_date": "2022-08-15",
+    "status": "active",
+    "address": "Г.МОСКВА",
+    "entity_type": "individual",
+    "authorized_capital": null,
+    "director": null,
+    "founders": [],
+    "primary_okved": {
+      "code": "47.52",
+      "name": "Торговля розничная скобяными изделиями, лакокрасочными материалами и стеклом в специализированных магазинах"
+    },
+    "additional_okveds": [],
+    "has_unreliable_info": false,
+    "unreliable_fields": []
+  },
+  "bki": [
+    {
+      "subject_inn": "770498765403",
+      "subject_type": "person",
+      "report_date": "2026-10-24",
+      "credits": [
+        {
+          "contract_id": "КД-2024-110935",
+          "creditor_name": "АО \"СЕВЕРНЫЙ БАНК\"",
+          "credit_type": "credit",
+          "amount": 3000000,
+          "balance": 2100000,
+          "monthly_payment": 100000,
+          "opened_date": "2024-11-05",
+          "closed_date": null,
+          "status": "open",
+          "overdue_days": 0,
+          "overdue_amount": 0,
+          "max_overdue_days_12m": 0,
+          "had_overdue_30plus_12m": false
+        }
+      ],
+      "inquiries": [],
+      "summary": {
+        "total_monthly_payments": 100000,
+        "has_current_overdue_30plus": false,
+        "has_closed_without_overdue": false,
+        "worst_status_12m": "clean",
+        "inquiries_last_3m": 0,
+        "has_history": true
+      }
+    }
+  ],
+  "turnover": {
+    "inn": "770498765403",
+    "has_account": true,
+    "months": [
+      {
+        "month": "2025-10-01",
+        "incoming": 850000,
+        "outgoing": 748000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 170000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2025-11-01",
+        "incoming": 800000,
+        "outgoing": 704000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 160000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2025-12-01",
+        "incoming": 900000,
+        "outgoing": 792000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 180000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-01-01",
+        "incoming": 700000,
+        "outgoing": 616000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 140000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-02-01",
+        "incoming": 750000,
+        "outgoing": 660000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 150000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-03-01",
+        "incoming": 950000,
+        "outgoing": 836000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 190000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-04-01",
+        "incoming": 1100000,
+        "outgoing": 968000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 220000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-05-01",
+        "incoming": 1150000,
+        "outgoing": 1012000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 230000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-06-01",
+        "incoming": 1200000,
+        "outgoing": 1056000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 240000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-07-01",
+        "incoming": 1250000,
+        "outgoing": 1100000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 250000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-08-01",
+        "incoming": 1200000,
+        "outgoing": 1056000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 240000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-09-01",
+        "incoming": 1150000,
+        "outgoing": 1012000,
+        "top_payers": [
+          {
+            "name": "ООО \"РЕМСТРОЙ\"",
+            "inn": "7714023454",
+            "amount": 230000,
+            "share_percent": 20.0
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "annual_revenue": 12000000,
+      "avg_monthly_revenue": 1000000
+    }
+  },
+  "fns_transparent": {
+    "inn": "770498765403",
+    "accounts_blocked": false,
+    "mass_address": false,
+    "address_company_count": null,
+    "director": null,
+    "director_disqualified": false,
+    "disqualification_period": null,
+    "founders": [],
+    "has_mass_founder": false,
+    "tax_debt_enforcement": 0,
+    "tax_debt_enforcement_date": "2026-10-01",
+    "arrears_and_penalties": 0,
+    "arrears_and_penalties_date": "2026-09-01",
+    "tax_reporting_missing": false,
+    "employee_count": 6,
+    "employee_count_year": 2025,
+    "taxes_paid": 720000,
+    "revenue_accounting": null,
+    "expense_accounting": null
+  },
+  "gir_bo": {},
+  "fssp": [
+    {
+      "subject": "ИП СОКОЛОВ ДМИТРИЙ АНДРЕЕВИЧ",
+      "subject_inn": "770498765403",
+      "search_type": "person",
+      "cases": [],
+      "total_active_amount": 0,
+      "has_active_cases": false
+    }
+  ],
+  "cbr_kyc": {
+    "inn": "770498765403",
+    "risk_level": "green",
+    "risk_level_date": "2026-10-15",
+    "entity_type": "individual"
+  }
+}

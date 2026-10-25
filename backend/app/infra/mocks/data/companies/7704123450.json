@@ -1,0 +1,507 @@
+{
+  "egrul": {
+    "inn": "7704123450",
+    "ogrn": "1197700987659",
+    "ogrnip": null,
+    "full_name": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ \"ТЕХПРОМ\"",
+    "short_name": "ООО \"ТЕХПРОМ\"",
+    "kpp": "770401001",
+    "registration_date": "2019-09-10",
+    "status": "active",
+    "address": "115280, Г.МОСКВА, УЛ. ЛЕНИНСКАЯ СЛОБОДА, Д. 26, СТР. 5",
+    "entity_type": "legal",
+    "authorized_capital": 1000000,
+    "director": {
+      "full_name": "КУЗНЕЦОВ ИГОРЬ ВАЛЕНТИНОВИЧ",
+      "inn": "770623456765",
+      "position": "ГЕНЕРАЛЬНЫЙ ДИРЕКТОР",
+      "record_date": "2019-09-10"
+    },
+    "founders": [
+      {
+        "full_name": "КУЗНЕЦОВ ИГОРЬ ВАЛЕНТИНОВИЧ",
+        "inn": "770623456765",
+        "share_percent": 55,
+        "share_amount": 550000,
+        "record_date": "2019-09-10"
+      },
+      {
+        "full_name": "ЛЕБЕДЕВ ПАВЕЛ ОЛЕГОВИЧ",
+        "inn": "770734567870",
+        "share_percent": 30,
+        "share_amount": 300000,
+        "record_date": "2020-02-14"
+      },
+      {
+        "full_name": "ОРЛОВА НАТАЛЬЯ ИГОРЕВНА",
+        "inn": "770845678984",
+        "share_percent": 15,
+        "share_amount": 150000,
+        "record_date": "2022-06-01"
+      }
+    ],
+    "primary_okved": {
+      "code": "25.62",
+      "name": "Обработка металлических изделий механическая"
+    },
+    "additional_okveds": [],
+    "has_unreliable_info": false,
+    "unreliable_fields": []
+  },
+  "bki": [
+    {
+      "subject_inn": "7704123450",
+      "subject_type": "company",
+      "report_date": "2026-10-24",
+      "credits": [
+        {
+          "contract_id": "КД-2024-052210",
+          "creditor_name": "АО \"СЕВЕРНЫЙ БАНК\"",
+          "credit_type": "credit",
+          "amount": 9000000,
+          "balance": 6300000,
+          "monthly_payment": 250000,
+          "opened_date": "2024-05-20",
+          "closed_date": null,
+          "status": "open",
+          "overdue_days": 0,
+          "overdue_amount": 0,
+          "max_overdue_days_12m": 0,
+          "had_overdue_30plus_12m": false
+        },
+        {
+          "contract_id": "КД-2025-020114",
+          "creditor_name": "АО \"СЕВЕРНЫЙ БАНК\"",
+          "credit_type": "credit",
+          "amount": 4000000,
+          "balance": 3100000,
+          "monthly_payment": 150000,
+          "opened_date": "2025-02-11",
+          "closed_date": null,
+          "status": "open",
+          "overdue_days": 0,
+          "overdue_amount": 0,
+          "max_overdue_days_12m": 0,
+          "had_overdue_30plus_12m": false
+        },
+        {
+          "contract_id": "КД-2020-090301",
+          "creditor_name": "АО \"СЕВЕРНЫЙ БАНК\"",
+          "credit_type": "credit",
+          "amount": 6000000,
+          "balance": 0,
+          "monthly_payment": 0,
+          "opened_date": "2020-09-03",
+          "closed_date": "2023-09-03",
+          "status": "closed",
+          "overdue_days": 0,
+          "overdue_amount": 0,
+          "max_overdue_days_12m": 0,
+          "had_overdue_30plus_12m": false
+        }
+      ],
+      "inquiries": [
+        {
+          "date": "2026-09-02",
+          "creditor_name": "АО \"СЕВЕРНЫЙ БАНК\"",
+          "amount": 12000000,
+          "purpose": "credit_line"
+        }
+      ],
+      "summary": {
+        "total_monthly_payments": 400000,
+        "has_current_overdue_30plus": false,
+        "has_closed_without_overdue": true,
+        "worst_status_12m": "clean",
+        "inquiries_last_3m": 1,
+        "has_history": true
+      }
+    },
+    {
+      "subject_inn": "770623456765",
+      "subject_type": "person",
+      "report_date": "2026-10-24",
+      "credits": [
+        {
+          "contract_id": "ПК-2018-200417",
+          "creditor_name": "АО \"СЕВЕРНЫЙ БАНК\"",
+          "credit_type": "credit",
+          "amount": 600000,
+          "balance": 0,
+          "monthly_payment": 0,
+          "opened_date": "2018-04-17",
+          "closed_date": "2020-04-17",
+          "status": "closed",
+          "overdue_days": 0,
+          "overdue_amount": 0,
+          "max_overdue_days_12m": 0,
+          "had_overdue_30plus_12m": false
+        }
+      ],
+      "inquiries": [],
+      "summary": {
+        "total_monthly_payments": 0,
+        "has_current_overdue_30plus": false,
+        "has_closed_without_overdue": true,
+        "worst_status_12m": "clean",
+        "inquiries_last_3m": 0,
+        "has_history": true
+      }
+    },
+    {
+      "subject_inn": "770734567870",
+      "subject_type": "person",
+      "report_date": "2026-10-24",
+      "credits": [],
+      "inquiries": [],
+      "summary": {
+        "total_monthly_payments": 0,
+        "has_current_overdue_30plus": false,
+        "has_closed_without_overdue": false,
+        "worst_status_12m": "clean",
+        "inquiries_last_3m": 0,
+        "has_history": false
+      }
+    }
+  ],
+  "turnover": {
+    "inn": "7704123450",
+    "has_account": true,
+    "months": [
+      {
+        "month": "2025-10-01",
+        "incoming": 5100000,
+        "outgoing": 4488000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1530000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 1020000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2025-11-01",
+        "incoming": 4900000,
+        "outgoing": 4312000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1470000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 980000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2025-12-01",
+        "incoming": 5600000,
+        "outgoing": 4928000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1680000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 1120000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-01-01",
+        "incoming": 4400000,
+        "outgoing": 3872000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1320000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 880000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-02-01",
+        "incoming": 4700000,
+        "outgoing": 4136000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1410000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 940000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-03-01",
+        "incoming": 5000000,
+        "outgoing": 4400000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1500000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 1000000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-04-01",
+        "incoming": 5100000,
+        "outgoing": 4488000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1530000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 1020000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-05-01",
+        "incoming": 5200000,
+        "outgoing": 4576000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1560000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 1040000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-06-01",
+        "incoming": 4900000,
+        "outgoing": 4312000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1470000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 980000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-07-01",
+        "incoming": 4800000,
+        "outgoing": 4224000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1440000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 960000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-08-01",
+        "incoming": 5000000,
+        "outgoing": 4400000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1500000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 1000000,
+            "share_percent": 20.0
+          }
+        ]
+      },
+      {
+        "month": "2026-09-01",
+        "incoming": 5300000,
+        "outgoing": 4664000,
+        "top_payers": [
+          {
+            "name": "АО \"МАШЗАВОД\"",
+            "inn": "7714023454",
+            "amount": 1590000,
+            "share_percent": 30.0
+          },
+          {
+            "name": "ООО \"ПРОМКОМПЛЕКТ\"",
+            "inn": "7705123452",
+            "amount": 1060000,
+            "share_percent": 20.0
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "annual_revenue": 60000000,
+      "avg_monthly_revenue": 5000000
+    }
+  },
+  "fns_transparent": {
+    "inn": "7704123450",
+    "accounts_blocked": false,
+    "mass_address": false,
+    "address_company_count": null,
+    "director": {
+      "full_name": "КУЗНЕЦОВ ИГОРЬ ВАЛЕНТИНОВИЧ",
+      "inn": "770623456765",
+      "company_count": 1,
+      "is_mass": false
+    },
+    "director_disqualified": false,
+    "disqualification_period": null,
+    "founders": [
+      {
+        "full_name": "КУЗНЕЦОВ ИГОРЬ ВАЛЕНТИНОВИЧ",
+        "inn": "770623456765",
+        "company_count": 1,
+        "is_mass": false
+      },
+      {
+        "full_name": "ЛЕБЕДЕВ ПАВЕЛ ОЛЕГОВИЧ",
+        "inn": "770734567870",
+        "company_count": 2,
+        "is_mass": false
+      },
+      {
+        "full_name": "ОРЛОВА НАТАЛЬЯ ИГОРЕВНА",
+        "inn": "770845678984",
+        "company_count": 1,
+        "is_mass": false
+      }
+    ],
+    "has_mass_founder": false,
+    "tax_debt_enforcement": 0,
+    "tax_debt_enforcement_date": "2026-10-01",
+    "arrears_and_penalties": 0,
+    "arrears_and_penalties_date": "2026-09-01",
+    "tax_reporting_missing": false,
+    "employee_count": 64,
+    "employee_count_year": 2025,
+    "taxes_paid": 6800000,
+    "revenue_accounting": 58700000,
+    "expense_accounting": 52400000
+  },
+  "gir_bo": {
+    "2025": {
+      "inn": "7704123450",
+      "company_name": "ООО \"ТЕХПРОМ\"",
+      "year": 2025,
+      "unit": "thousands",
+      "balance": {
+        "total_assets": 29350,
+        "fixed_assets": 9783,
+        "inventories": 2935,
+        "cash": 2348,
+        "financial_assets": 7337,
+        "equity": 19566,
+        "long_term_debt": 5870,
+        "short_term_payables": 6522
+      },
+      "income_statement": {
+        "revenue": 58700,
+        "expenses": 51656,
+        "other_income": 0,
+        "other_expenses": 587,
+        "income_tax": 1174,
+        "net_profit": 5283
+      },
+      "previous_year": {
+        "revenue": 51200,
+        "net_profit": 4096
+      },
+      "report_date": "2026-03-31",
+      "signed_by": "Кузнецов Игорь Валентинович",
+      "requires_audit": false
+    }
+  },
+  "fssp": [
+    {
+      "subject": "ООО \"ТЕХПРОМ\"",
+      "subject_inn": "7704123450",
+      "search_type": "company",
+      "cases": [],
+      "total_active_amount": 0,
+      "has_active_cases": false
+    },
+    {
+      "subject": "КУЗНЕЦОВ ИГОРЬ ВАЛЕНТИНОВИЧ",
+      "subject_inn": "770623456765",
+      "search_type": "person",
+      "cases": [],
+      "total_active_amount": 0,
+      "has_active_cases": false
+    }
+  ],
+  "cbr_kyc": {
+    "inn": "7704123450",
+    "risk_level": "green",
+    "risk_level_date": "2026-10-15",
+    "entity_type": "legal"
+  }
+}

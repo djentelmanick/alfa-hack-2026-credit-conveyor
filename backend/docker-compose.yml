@@ -1,0 +1,85 @@
+services:
+  api:
+    build: .
+    # .env.example даёт рабочие значения для локального запуска одной командой,
+    # необязательный .env переопределяет их, не попадая в репозиторий.
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      # В slim-образе нет curl, а python есть.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  postgres:
+    image: postgres:16.15-alpine3.24
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: credit
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d credit"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Официальные образы MinIO больше не публикуются, это сборка того же MinIO от Pigsty.
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio-init:
+    image: pgsty/mc:RELEASE.2026-10-18T00-00-00Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      S3_BUCKET_FILES: ${S3_BUCKET_FILES:-credit-files}
+      S3_BUCKET_CONTRACTS: ${S3_BUCKET_CONTRACTS:-credit-contracts}
+    entrypoint: ["/bin/sh", "-c"]
+    # $$ экранирует переменные от подстановки compose, их раскрывает shell контейнера.
+    command:
+      - >-
+        mc alias set local http://minio:9000 "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" &&
+        mc mb --ignore-existing "local/$$S3_BUCKET_FILES" &&
+        mc mb --ignore-existing "local/$$S3_BUCKET_CONTRACTS"
+
+volumes:
+  postgres-data:
+  minio-data:
