@@ -85,6 +85,7 @@
 | Эндпоинт | Метод | Доступ | Запрос | Ответ | Ошибки |
 |---|---|---|---|---|---|
 | `/companies/get` | POST | К+А | `{inn}` | `200 CompanyOut` | 404 ИНН не найден, 503 `SOURCE_UNAVAILABLE` |
+| `/companies/authority` | POST | К | `AuthorityIn` | `200 CompanyOut` | 403 `NOT_DIRECTOR` (нет доверенности или это ИП), 404 ИНН не найден, 422 доверенность не прошла (`details[].code` из таблицы ниже), 503 `SOURCE_UNAVAILABLE` (реестр доверенностей) |
 | `/consents/give` | POST | К | `{inn, types: ConsentType[]}` | `201 ConsentOut[]` | 403 `NOT_DIRECTOR` |
 | `/consents/list` | POST | К | `{inn}` | `200 ConsentOut[]` | |
 
@@ -100,9 +101,25 @@
 Компании и согласия:
 
 - `/companies/get` отдаёт данные ЕГРЮЛ/ЕГРИП любому клиенту: это открытый реестр, анкете они нужны для автоподтягивания
-  (SCOPE, раздел 3). Банковские данные (`has_account`, `annual_revenue`) приходят только руководителю компании и аналитику.
-  `can_apply` у клиента это «руководитель по ЕГРЮЛ или сам ИП», иначе `cannot_apply_reason`.
-  У аналитика `can_apply = false` и причина «Заявку подаёт клиент».
+  (SCOPE, раздел 3). Банковские данные (`has_account`, `annual_revenue`) приходят тем, кто может подать заявку, и аналитику.
+  `can_apply` у клиента это «руководитель по ЕГРЮЛ (сверка по ИНН физлица), сам ИП или представитель с подтверждённой
+  доверенностью», иначе `cannot_apply_reason`. `authority_required = true` значит: это ООО, и подать можно после
+  `/companies/authority`. У аналитика `can_apply = false` и причина «Заявку подаёт клиент».
+- `/companies/authority` проверяет МЧД (реестр ФНС) или нотариальную доверенность (реестр ФНП) и привязывает компанию
+  к пользователю с `basis = POWER_OF_ATTORNEY`. Директор по ЕГРЮЛ проходит как директор, что бы ни выбрал в `role`.
+  Доверенность ещё раз проверяется при `/applications/validate` и `/applications/submit`. Простая письменная доверенность
+  не принимается. Коды отказа (поле `authority.power_of_attorney`, кроме первого):
+
+  | Код | Когда |
+  |---|---|
+  | `NOT_DIRECTOR_BY_EGRUL` (поле `authority.role`) | выбрана роль `DIRECTOR`, но по ЕГРЮЛ руководитель другой |
+  | `POA_NOT_FOUND` | доверенности нет в реестре (для МЧД также при несовпадении ИНН доверителя или представителя) |
+  | `POA_REVOKED` | отозвана или отменена |
+  | `POA_EXPIRED` | `valid_until` раньше сегодняшней даты |
+  | `POA_WRONG_PRINCIPAL` | выдана другой компанией |
+  | `POA_NOT_SIGNED_BY_DIRECTOR` | подписал не действующий руководитель по ЕГРЮЛ |
+  | `POA_WRONG_REPRESENTATIVE` | выдана другому человеку (сверка по ИНН из аккаунта) |
+  | `POA_MISSING_POWER` | нет полномочия на подачу заявки или на подписание кредитного договора |
 - Согласия даются по ИНН до создания заявки и хранятся по паре «ИНН, пользователь». Повторное согласие того же типа
   не меняет `given_at`. После первого `/consents/give` компания появляется в `UserOut.companies`.
 
@@ -363,7 +380,29 @@ interface CompanyOut {
   has_account?: boolean;        // false: нужна выписка 1С. Только руководителю и аналитику
   annual_revenue?: Money;       // по оборотам за 12 мес, если счёт у нас. Только руководителю и аналитику
   can_apply: boolean;
-  cannot_apply_reason?: string; // "Подать может только руководитель"
+  cannot_apply_reason?: string; // "Подать заявку может руководитель компании, сам ИП или представитель…"
+  authority_required: boolean;  // ООО и клиент без полномочий: нужен /companies/authority
+  authority?: AuthorityOut;     // есть, когда can_apply у клиента
+}
+
+type ApplicantRole = 'DIRECTOR' | 'OWNER' | 'FINANCE_OFFICER' | 'FUNDING_OFFICER'
+  | 'BANKING_OFFICER' | 'OTHER_AUTHORIZED' | 'SOLE_TRADER';   // SOLE_TRADER выставляет сервер для ИП
+type AuthorityBasis = 'SOLE_TRADER' | 'DIRECTOR' | 'POWER_OF_ATTORNEY';
+
+interface AuthorityIn {
+  inn: string;
+  role: ApplicantRole;
+  power_of_attorney?:
+    | { kind: 'MCHD'; mchd_guid: string }
+    | { kind: 'NOTARIAL'; notarized_on: ISODate; register_number: string; notary_name: string };
+}
+
+interface AuthorityOut {
+  role: ApplicantRole;
+  basis: AuthorityBasis;
+  representative_name: string;
+  power_of_attorney?: string;   // реквизиты одной строкой
+  registered_founder?: boolean; // только для OWNER: есть ли заявитель среди учредителей по ЕГРЮЛ
 }
 
 interface ConsentOut { type: ConsentType; given_by: string; given_at: ISODateTime }

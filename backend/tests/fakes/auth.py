@@ -8,6 +8,7 @@ from app.api.v1.deps import Container
 from app.application.analyst_service import AnalystService
 from app.application.application_service import ApplicationService, StatementFiles
 from app.application.auth_service import AuthService
+from app.application.authority_service import AuthorityService
 from app.application.company_service import CompanyService
 from app.application.consent_service import ConsentService
 from app.application.contract_service import ContractDocuments, ContractService
@@ -25,6 +26,8 @@ from app.infra.documents import ReportlabContractRenderer
 from app.infra.mocks import (
     MockEgrulAdapter,
     MockFailures,
+    MockMchdAdapter,
+    MockNotaryPoaAdapter,
     MockPassportAdapter,
     MockSignatureAdapter,
     MockTurnoverAdapter,
@@ -105,6 +108,16 @@ async def make_user(
     )
 
 
+def make_authority_service(
+    fixtures: SyntheticData, failures: MockFailures, clock: Clock
+) -> AuthorityService:
+    return AuthorityService(
+        mchd=MockMchdAdapter(fixtures, failures),
+        notary=MockNotaryPoaAdapter(fixtures, failures),
+        clock=clock,
+    )
+
+
 class StubProbe:
     async def check(self) -> bool:
         return True
@@ -146,6 +159,7 @@ def make_container(
         url_ttl=timedelta(minutes=5),
     )
     contracts = ContractService(uow=uow, catalog=catalog, documents=documents, clock=clock)
+    authority = make_authority_service(fixtures, failures, clock)
     return Container(
         db_probe=StubProbe(),
         s3_probe=StubProbe(),
@@ -159,7 +173,9 @@ def make_container(
             clock=clock,
         ),
         consents=ConsentService(uow=uow, registry=registry, clock=clock),
-        companies=CompanyService(uow=uow, registry=registry, turnover=turnover),
+        companies=CompanyService(
+            uow=uow, registry=registry, turnover=turnover, authority=authority
+        ),
         applications=ApplicationService(
             uow=uow,
             catalog=catalog,

@@ -1080,6 +1080,10 @@ class ConsentService {
 }
 class CompanyService {
   +get(claims, inn) CompanyView
+  +claim_authority(claims, inn, claim) CompanyView
+}
+class AuthorityService {
+  +resolve(applicant, company, claim) ApplicantAuthority
 }
 class UnitOfWork {
   <<interface>>
@@ -1188,6 +1192,9 @@ ConsentService --> UnitOfWork
 ConsentService --> CompanyRegistryPort
 CompanyService --> CompanyRegistryPort
 CompanyService --> AccountTurnoverPort
+CompanyService --> AuthorityService
+AuthorityService --> MchdRegistryPort
+AuthorityService --> NotaryPoaRegistryPort
 CurrentUser --> TokenService
 TokenService <|.. JwtService
 PasswordHasher <|.. Argon2PasswordHasher
@@ -1212,6 +1219,8 @@ RetryingGateway o-- MockSourceAdapter : оборачивает
 | `RosfinmonitoringPort` | `is_listed(inn, persons) -> bool` | `MockRosfinAdapter` |
 | `SignatureVerifierPort` | `verify(statement_raw) -> SignatureStatus` | `MockSignatureAdapter` |
 | `PassportCheckPort` | `is_valid(series, number) -> bool` | `MockPassportAdapter` |
+| `MchdRegistryPort` | `find(guid, principal_inn, representative_inn) -> PowerOfAttorney \| None` (реестр МЧД ФНС) | `MockMchdAdapter` |
+| `NotaryPoaRegistryPort` | `find(notarized_on, register_number, notary_name) -> PowerOfAttorney \| None` (реестр ФНП) | `MockNotaryPoaAdapter` |
 
 Остальные порты: `UnitOfWork` и репозитории (включая `ConsentRepository`), `TaskQueue`, `StatusPublisher`,
 `PipelineLock`,

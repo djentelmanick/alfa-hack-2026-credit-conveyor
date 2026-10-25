@@ -27,7 +27,8 @@ class ConsentService:
         company = await self._registry.find_by_inn(inn)
         async with self._uow() as uow:
             user = await uow.users.get(claims.user_id)
-            if not company.is_director(user):
+            is_director = company.is_director(user)
+            if not is_director and not user.represents(company.inn):
                 raise NotDirector()
             _ensure_applicable(company.kind, types)
 
@@ -41,9 +42,18 @@ class ConsentService:
                     await uow.consents.add(inn, consent)
                 result.append(consent)
 
-            user.link_company(
-                UserCompany(inn=company.inn, name=company.name, kind=company.kind, is_director=True)
-            )
+            if is_director:
+                # Привязка представителя уже сделана при проверке доверенности, её не трогаем.
+                link = user.company(company.inn)
+                user.link_company(
+                    UserCompany(
+                        inn=company.inn,
+                        name=company.name,
+                        kind=company.kind,
+                        is_director=True,
+                        authority=link.authority if link else None,
+                    )
+                )
             await uow.commit()
         return result
 
