@@ -15,6 +15,8 @@ dependencies = [
     "pyjwt>=2.15.1",
     "argon2-cffi>=25.1.0",
     "pyyaml>=6.0.3",
+    "python-multipart>=0.0.32",
+    "reportlab>=5.1.0",
 ]
 
 [dependency-groups]
@@ -37,7 +39,8 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "ASYNC", "S", "SIM", "RUF", "DTZ",
 ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+# В тестах пароли и секреты намеренно фиктивные и записаны прямо в коде.
+"tests/**" = ["S101", "S105", "S106"]
 # Имена доменных исключений заданы в BACKEND_SPEC, раздел 18, и совпадают с кодами ошибок API.
 "app/domain/errors.py" = ["N818"]
 
@@ -50,6 +53,16 @@ files = ["app"]
 # У aioboto3, aiobotocore и botocore нет py.typed, а пакеты стабов в стек не входят.
 [[tool.mypy.overrides]]
 module = ["aioboto3", "aioboto3.*", "aiobotocore", "aiobotocore.*", "botocore", "botocore.*"]
+ignore_missing_imports = true
+
+# У PyYAML нет py.typed, а types-PyYAML в стек не входит. Нужен только safe_load в загрузчике каталога.
+[[tool.mypy.overrides]]
+module = ["yaml"]
+ignore_missing_imports = true
+
+# У reportlab нет py.typed, а types-reportlab в стек не входит. Используется только в contract_pdf.py.
+[[tool.mypy.overrides]]
+module = ["reportlab", "reportlab.*"]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]

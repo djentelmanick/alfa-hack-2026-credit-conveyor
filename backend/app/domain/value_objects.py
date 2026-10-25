@@ -115,6 +115,7 @@ class CompanyProfile:
     founders: tuple[Founder, ...] = ()
     director_changed_at: date | None = None
     unreliable_records: tuple[str, ...] = ()
+    okved_label: str = ""
 
     def is_director(self, user: User) -> bool:
         return user.full_name.casefold() == self.director.casefold()
@@ -137,9 +138,20 @@ class CreditReport:
 
 
 @dataclass(frozen=True, slots=True)
+class Payer:
+    inn: str
+    name: str
+    amount: Money
+    share_pct: Decimal
+
+
+@dataclass(frozen=True, slots=True)
 class MonthRevenue:
     month: date
     incoming: Money
+    # Списания и плательщики нужны только отчёту аналитика, скоринг и проверки их не читают.
+    outgoing: Money = field(default_factory=Money.zero)
+    top_payers: tuple[Payer, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

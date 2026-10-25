@@ -1,0 +1,2 @@
+# Выписки 1С хранятся байт в байт: в них CRLF и Windows-1251, а подпись банка считается по хешу файла.
+app/infra/mocks/data/statements/*.txt -text

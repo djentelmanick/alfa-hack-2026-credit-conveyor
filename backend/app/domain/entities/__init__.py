@@ -2,6 +2,7 @@ from app.domain.entities.application import Application
 from app.domain.entities.audit import AuditEntry
 from app.domain.entities.contract import (
     Contract,
+    ContractChange,
     ContractVersion,
     CreditLineContract,
     LoanContract,
@@ -17,11 +18,13 @@ from app.domain.entities.parts import (
     Decision,
     InfoRequest,
     OfferOption,
+    ParsedStatement,
+    SigningCode,
     SourceSnapshot,
     StatementOperation,
     StatusTransition,
 )
-from app.domain.entities.user import User
+from app.domain.entities.user import TokenClaims, User, UserCompany
 
 __all__ = [
     "Application",
@@ -31,6 +34,7 @@ __all__ = [
     "CheckResult",
     "Consent",
     "Contract",
+    "ContractChange",
     "ContractVersion",
     "CreditLineContract",
     "Decision",
@@ -38,10 +42,14 @@ __all__ = [
     "LoanContract",
     "OfferOption",
     "Operation",
+    "ParsedStatement",
     "ScheduleItem",
+    "SigningCode",
     "SourceSnapshot",
     "StatementOperation",
     "StatusTransition",
+    "TokenClaims",
     "Tranche",
     "User",
+    "UserCompany",
 ]

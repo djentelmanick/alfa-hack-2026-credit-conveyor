@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.domain.enums import Purpose, Variant
+from app.domain.enums import CollateralType, Purpose, Variant
 from app.domain.value_objects import Money
 
 
@@ -75,6 +75,7 @@ class PurposeConfig(_Config):
 class CatalogConfig(_Config):
     purposes: dict[Purpose, PurposeConfig]
     products: dict[str, ProductConfig]
+    collateral_types: dict[CollateralType, str]
     industry_risk: dict[Literal["low", "medium", "high"], list[str]]
     forbidden_okved: list[str]
 
@@ -83,6 +84,9 @@ class CatalogConfig(_Config):
         missing = set(Purpose) - set(self.purposes)
         if missing:
             raise ValueError(f"Нет настроек для целей: {sorted(missing)}")
+        missing_collateral = set(CollateralType) - set(self.collateral_types)
+        if missing_collateral:
+            raise ValueError(f"Нет подписей для типов залога: {sorted(missing_collateral)}")
         for purpose, cfg in self.purposes.items():
             unknown = set(cfg.products) - set(self.products)
             if unknown:

@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Бэкенд «Умного кредитного кабинета предпринимателя» (хакатон Альфа-Банка, кредитный конвейер для МСБ).
-Клиент подаёт заявку на кредит, бэкенд асинхронно проверяет её по источникам, считает скоринг,
+Клиент подаёт заявку на кредит, бэкенд асинхронно (отдельный процесс worker через RabbitMQ) проверяет её по источникам, считает скоринг,
 принимает решение, аналитик разбирает нестандартные случаи, клиент подписывает договор,
 дальше живёт договор с операциями и эмуляцией времени.
 
@@ -30,12 +30,15 @@
 
 ## Стек
 
-- Python 3.15, FastAPI, Pydantic v2, SQLAlchemy 2 (async) + asyncpg, Alembic
+- Python 3.15, FastAPI (+ python-multipart для загрузки выписок), Pydantic v2, SQLAlchemy 2 (async) + asyncpg, Alembic
 - PostgreSQL 16, S3-совместимое хранилище (MinIO локально), aioboto3
+- RabbitMQ 4.3 (очередь задач конвейера и обмен событий), клиент aio-pika
 - PyJWT (HS256), argon2-cffi для паролей
+- reportlab для PDF договоров (шрифт DejaVu Sans лежит в `app/infra/documents/fonts/`)
 - pytest + pytest-asyncio + httpx, ruff, mypy (strict)
 - uv: зависимости в `pyproject.toml`, версии зафиксированы в `uv.lock`
-- Docker Compose: сервисы `api`, `postgres`, `minio`, `minio-init` (создаёт бакеты); MinIO из образов `pgsty/minio` и `pgsty/mc`, официальных больше нет
+- Docker Compose: сервисы `api`, `worker` (тот же образ, `python -m app.worker`), `rabbitmq`, `postgres`, `minio`,
+  `minio-init` (создаёт бакеты); MinIO из образов `pgsty/minio` и `pgsty/mc`, официальных больше нет
 
 Если какая-то зависимость ещё не ставится на Python 3.15, не обходи это хаками:
 сообщи, какая именно, и предложи временно 3.14 (решение фиксируется здесь).
@@ -46,6 +49,7 @@
 docker compose up --build                 # поднять всё
 docker compose exec api alembic upgrade head
 docker compose exec api python -m app.infra.mocks.seed   # тестовые учётки и 5 сценариев
+docker compose logs -f worker             # конвейер, reconciler, истечение сроков
 pytest -q                                 # все тесты
 pytest -q tests/unit                      # быстрые тесты домена
 pytest -q tests/e2e                       # сценарии SCOPE раздел 12
@@ -59,10 +63,23 @@ mypy app
 
 Слои и направления зависимостей: `api -> application -> domain <- infra`.
 
-- `app/domain` не импортирует FastAPI, SQLAlchemy, aioboto3, PyJWT, httpx и ничего из `app/infra`, `app/api`, `app/application`.
+Процессы (BACKEND_SPEC, раздел 1, схема C4 уровня 2):
+
+- `api` принимает запросы и отвечает: JWT, этап 1 (форма), запись заявки в PostgreSQL, постановка задачи, WebSocket.
+  Конвейер (этап CHECKING и дальше) и фоновые задачи в `api` не выполняются. К источникам `api` обращается только
+  там, где контракт требует синхронного ответа (`/companies/get`, согласия, форма, паспорт, ЭП выписки).
+- `worker` (`app/worker.py`) берёт задачу из `applications.process`, ходит во все источники, сохраняет собранное
+  в PostgreSQL, делает проверки и решение, публикует события. Там же reconciler и `ExpirationJob`.
+- Домен и сервисы не знают про RabbitMQ: очередь и события только через порты `TaskQueue` и `StatusPublisher`,
+  реализации на aio-pika в `app/infra/messaging`.
+- Обработка задачи идемпотентна: повторная доставка и задача со старым `pipeline_run_id` не дублируют данные.
+  ack только после commit, битые сообщения уходят в DLQ.
+
+- `app/domain` не импортирует FastAPI, SQLAlchemy, aioboto3, aio-pika, PyJWT, httpx и ничего из `app/infra`, `app/api`, `app/application`.
   Только стандартная библиотека и Pydantic (для value objects допускается dataclass).
 - `app/application` зависит от доменных портов (абстрактных классов в `app/domain/ports.py`), а не от реализаций.
-- Реализации портов живут в `app/infra` и связываются с портами только в `app/main.py` (composition root).
+- Реализации портов живут в `app/infra` и связываются с портами только в `app/main.py` (composition root):
+  `build_container` для api, `build_worker` для worker.
 - Роутеры в `app/api/v1` не содержат бизнес-логики: принять DTO, взять `TokenClaims` из `Depends(current_user)`,
   вызвать сервис, вернуть DTO.
 - Статус заявки меняется только через `ApplicationStateMachine.transition(...)` и методы `Application`.
@@ -104,6 +121,9 @@ mypy app
   Ожидаемые классы, ставки и исходы берутся из SCOPE, их нельзя «подгонять» под код.
 - Внешние источники в тестах это те же моки, что и в приложении, с синтетикой из `app/infra/mocks/data`.
 - S3 в тестах: MinIO из docker compose или in-memory реализация `FileStoragePort`.
+- RabbitMQ в тестах: e2e и тесты сервисов используют in-memory `TaskQueue` и шину событий из `tests/fakes`
+  (обработчик worker работает в том же процессе). Адаптеры aio-pika проверяются интеграционными тестами
+  на настоящем RabbitMQ (`TEST_RABBITMQ_URL`, по умолчанию из docker compose).
 
 ## Как работать
 

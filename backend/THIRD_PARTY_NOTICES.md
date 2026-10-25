@@ -7,6 +7,7 @@
 | Пакет | Лицензия | Назначение |
 |---|---|---|
 | fastapi | MIT | веб-фреймворк |
+| python-multipart | Apache-2.0 | разбор multipart/form-data (загрузка выписки) |
 | uvicorn | BSD-3-Clause | ASGI-сервер |
 | pydantic | MIT | DTO и валидация |
 | pydantic-settings | MIT | настройки из окружения |
@@ -16,11 +17,20 @@
 | aioboto3 | Apache-2.0 | клиент S3 |
 | pyjwt | MIT | JWT |
 | argon2-cffi | MIT | хеширование паролей |
+| reportlab | BSD-3-Clause | PDF договора |
+| pillow | MIT-CMU | зависимость reportlab (изображения) |
+| charset-normalizer | MIT | зависимость reportlab |
 | pytest | MIT | тесты (dev) |
 | pytest-asyncio | Apache-2.0 | async-тесты (dev) |
 | httpx | BSD-3-Clause | HTTP-клиент для тестов (dev) |
 | ruff | MIT | линтер и форматтер (dev) |
 | mypy | MIT | проверка типов (dev) |
+
+## Шрифты
+
+| Компонент | Версия | Лицензия | Назначение |
+|---|---|---|---|
+| DejaVu Sans (обычный и жирный) | 2.37 | Bitstream Vera, изменения DejaVu в public domain | кириллица в PDF договора, файлы и текст лицензии в `app/infra/documents/fonts/` |
 
 ## Образы и инструменты
 

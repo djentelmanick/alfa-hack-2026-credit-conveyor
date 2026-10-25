@@ -56,6 +56,12 @@ class InvalidCredentials(DomainError):
     default_message = "Неверный логин или пароль"
 
 
+class LoginTaken(DomainError):
+    code = "LOGIN_TAKEN"
+    http_status = 409
+    default_message = "Этот логин уже занят"
+
+
 class Forbidden(DomainError):
     code = "FORBIDDEN"
     http_status = 403
@@ -120,3 +126,13 @@ class StorageUnavailable(DomainError):
     code = "STORAGE_UNAVAILABLE"
     http_status = 503
     default_message = "Хранилище файлов недоступно"
+
+
+class ScoringNotImplemented(NotImplementedError):
+    """Модель скоринга ещё не готова: конвейер отправляет заявку на ручную проверку.
+
+    Не наследник DomainError, потому что это не ошибка запроса клиента и в HTTP не уходит.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("Модель скоринга ещё не реализована")

@@ -26,4 +26,6 @@ RUN useradd --system --uid 10001 app
 USER app
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+# Миграции до старта: фоновая задача истечения сроков читает applications сразу при запуске,
+# и на пустой базе приложение без них падает. upgrade head идемпотентен.
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000"]

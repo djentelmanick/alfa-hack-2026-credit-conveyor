@@ -94,8 +94,8 @@ fastapi, sqlalchemy, aioboto3, jwt и app.infra. Ничего не делай в
 
 ```text
 Этап 2 из docs/PHASES.md. Прочитай CLAUDE.md, docs/BACKEND_SPEC.md разделы 6 и 10, docs/SCOPE.md разделы 3, 4, 5, 12.
-Сделай моки всех портов источников, синтетику для пяти компаний из SCOPE раздел 12 и RetryingGateway.
-Только моки: никаких HTTP-клиентов к реальным ЕГРЮЛ, БКИ, ФНС и другим сервисам, никаких внешних адресов и ключей.
+Возьми моки из [data-sources](..%2F..%2Fdocs%2Fdata-sources) всех портов источников, синтетику для пяти компаний из SCOPE раздел 12 и RetryingGateway.
+Возьми моки [data-sources](..%2F..%2Fdocs%2Fdata-sources) : никаких HTTP-клиентов к реальным ЕГРЮЛ, БКИ, ФНС и другим сервисам, никаких внешних адресов и ключей.
 Синтетику подбери так, чтобы для каждой компании получались ровно те данные, что указаны в разделе 12
 (возраст, выручка, платежи по кредитам, кредитная история, ОКВЭД). Сделай Statement1CParser и две выписки
 для сценария 4. Тесты на каждый мок, ретраи, режим «сломаться» и парсер. Сначала покажи план.
@@ -108,8 +108,8 @@ fastapi, sqlalchemy, aioboto3, jwt и app.infra. Ничего не делай в
 **Цель:** кредитная логика SCOPE разделы 4 и 6 работает на доменном уровне. Скоринг только интерфейсом,
 модель позже добавит коллега (этап S).
 
-**Входит:** `FormValidator` (этап 1 проверок), `StopFactorRule` и 7 наследников, `StatementVerifier` с двумя стратегиями,
-`ManualReviewTrigger` и 5 наследников, `DecisionRule` и 6 наследников, `RatePolicy`, `DecisionEngine`, `PipelineContext`.
+**Входит:** `FormValidator` (этап 1 проверок), `StopFactorRule` и 8 наследников, `StatementVerifier` с двумя стратегиями,
+`ManualReviewTrigger` и 8 наследников, `DecisionRule` и 6 наследников, `RatePolicy`, `DecisionEngine`, `PipelineContext`.
 Для скоринга только: `ScoringModel` (абстрактный), `ScoringEngine` (заглушка, бросает `ScoringNotImplemented`),
 `ScoringResult`, `FactorScore`, исключение `ScoringNotImplemented`, и `FixedScoringEngine` в `tests/fakes/`
 с результатами из BACKEND_SPEC раздел 7.
@@ -292,6 +292,45 @@ SOURCES_NOT_READY, аудит-лог, событие клиенту по WebSock
 Этап 10 из docs/PHASES.md. Сравни сгенерированный /openapi.json с docs/API.md: выпиши все расхождения
 (пути, поля, типы, обязательность, коды ошибок) таблицей и предложи, где править, код или документ. Ничего не меняй,
 пока я не выберу. Потом прогони все e2e с чистой БД после docker compose up и напиши README по описанию этапа 10.
+```
+
+---
+
+## Этап 11. Worker и RabbitMQ (C4, уровень 2)
+
+**Цель:** `api` только принимает запросы и держит WebSocket, конвейер выполняет отдельный процесс `worker`,
+задачи и события идут через RabbitMQ. Бизнес-правила SCOPE и существующие контракты API не меняются.
+
+**Входит** (по шагам, каждый шаг отдельным коммитом с зелёными проверками):
+
+1. Docker Compose: сервисы `rabbitmq` и `worker`, переменные `RABBITMQ_URL`, `WORKER_PREFETCH`,
+   `RECONCILE_INTERVAL_SEC`, `PIPELINE_STALE_AFTER_SEC`, зависимость `aio-pika`, RabbitMQ в CI.
+2. Очередь и worker: порты `TaskQueue` и `PipelineLock` вместо `TaskRunner`, `Application.pipeline_run_id`
+   и миграция, топология `applications.process` с DLQ, `PipelineConsumer`, идемпотентный `PipelineOrchestrator.run`,
+   `PipelineReconciler` вместо `recover()`, `ExpirationJob` переезжает в worker. Сбор данных при неответившем
+   источнике: снимки `FAILED` и `SKIPPED`, стоп-факторы на `CheckingData` по имеющимся данным
+   (BACKEND_SPEC, разделы 6 и 11).
+3. События в WebSocket: `RabbitStatusPublisher` в обоих процессах, `EventSubscriber` в api,
+   `WsConnectionManager.deliver`.
+4. Отчёт аналитика только после сбора: `409 INVALID_STATUS` в `SUBMITTED` и `CHECKING`.
+5. `POST /applications/findings` и `FindingsBuilder`.
+
+**Не входит:** outbox, несколько экземпляров worker в compose, перенос этапа 1 (форма) в worker.
+
+**Готово, когда:** `docker compose up` поднимает `api`, `worker`, `rabbitmq`, `postgres`, `minio`, и сценарий 1
+проходит руками через фронт или HTTP; e2e всех пяти сценариев зелёные (api и обработчик worker в одном процессе,
+in-memory очередь); повторная доставка той же задачи и задача со старым `run_id` не дублируют снимки,
+проверки и переходы; заявка в `SUBMITTED` без задачи в очереди уходит в работу после reconciler;
+интеграционные тесты aio-pika на настоящем RabbitMQ: ack после commit, битое сообщение в DLQ, событие доходит
+через fanout; сломанный источник даёт отчёт с `FAILED` и данными остальных источников; сломанный ЕГРЮЛ даёт
+`SKIPPED` у зависимых запросов; findings клиента без проверок и `409` до конца сбора.
+
+```text
+Этап 11 из docs/PHASES.md. Прочитай CLAUDE.md, docs/BACKEND_SPEC.md разделы 1, 2, 6, 10, 11, 13, 17
+и docs/API.md разделы 2.4, 2.6, 4.4, 4.5. Перестрой бэкенд на api + worker + RabbitMQ по описанию этапа 11,
+шаг за шагом. Домен и сервисы не знают про RabbitMQ: только порты TaskQueue и StatusPublisher, реализация
+на aio-pika в app/infra/messaging. Сверяй API aio-pika с документацией через context7.
+Тесты: адаптируй существующие, новые только из критериев готовности этапа 11. Сначала покажи план.
 ```
 
 ---

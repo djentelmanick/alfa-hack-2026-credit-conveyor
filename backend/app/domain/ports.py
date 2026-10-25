@@ -1,9 +1,9 @@
 """Порты домена. Реализации живут в app/infra и подставляются в app/main.py."""
 
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Collection, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from types import TracebackType
 from typing import Self
 from uuid import UUID
@@ -13,12 +13,16 @@ from app.domain.entities import (
     AuditEntry,
     Consent,
     Contract,
+    ContractVersion,
+    ParsedStatement,
+    TokenClaims,
     User,
 )
-from app.domain.enums import KycLevel, SignatureStatus
-from app.domain.events import StatusChangedEvent
+from app.domain.enums import ApplicationStatus, KycLevel, RiskClass, SignatureStatus
+from app.domain.events import ApplicationEvent
 from app.domain.value_objects import (
     BailiffInfo,
+    Collateral,
     CompanyProfile,
     CreditReport,
     Money,
@@ -94,12 +98,30 @@ class SignatureVerifierPort(ABC):
     async def verify(self, statement_raw: bytes) -> SignatureStatus: ...
 
 
+class StatementParser(ABC):
+    """Разбор выписки, загруженной клиентом (сейчас формат 1CClientBankExchange)."""
+
+    @abstractmethod
+    def parse(self, raw: bytes) -> ParsedStatement:
+        """Бросает ValidationFailed с полем file и кодом STATEMENT_FORMAT."""
+
+
 class PassportCheckPort(ABC):
     @abstractmethod
     async def is_valid(self, series: str, number: str) -> bool: ...
 
 
 # --- Репозитории и единица работы ---
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class AnalystFilter:
+    """Фильтр списка аналитика. Черновики в него не попадают: банку их ещё не отправили."""
+
+    manual_queue: bool = False
+    status: ApplicationStatus | None = None
+    inn: str | None = None
+    risk_class: RiskClass | None = None
 
 
 class ApplicationRepository(ABC):
@@ -113,6 +135,31 @@ class ApplicationRepository(ABC):
     @abstractmethod
     async def find_active_by_inn(self, inn: str) -> Application | None: ...
 
+    @abstractmethod
+    async def list_for_applicant(
+        self,
+        applicant_id: UUID,
+        *,
+        status: ApplicationStatus | None = None,
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> tuple[list[Application], int]:
+        """Заявки клиента, новые сначала, и общее число без учёта offset и limit."""
+
+    @abstractmethod
+    async def list_by_statuses(self, statuses: Collection[ApplicationStatus]) -> list[Application]:
+        """Все заявки в этих статусах, старые сначала."""
+
+    @abstractmethod
+    async def list_expired(self, now: datetime) -> list[Application]:
+        """Одобрения и контрпредложения, у которых expires_at уже наступил."""
+
+    @abstractmethod
+    async def list_for_analyst(
+        self, flt: AnalystFilter, *, offset: int = 0, limit: int | None = None
+    ) -> tuple[list[Application], int]:
+        """Очередь ручной проверки идёт от старых к новым, остальной список от новых к старым."""
+
 
 class ContractRepository(ABC):
     @abstractmethod
@@ -121,6 +168,16 @@ class ContractRepository(ABC):
 
     @abstractmethod
     async def add(self, contract: Contract) -> None: ...
+
+    @abstractmethod
+    async def next_sequence(self) -> int:
+        """Порядковый номер для номера договора. Номер, взятый в откаченной транзакции, теряется."""
+
+    @abstractmethod
+    async def list_for(
+        self, *, applicant_id: UUID | None = None, application_id: UUID | None = None
+    ) -> list[Contract]:
+        """Договоры по фильтрам, новые сначала. Без фильтров это все договоры."""
 
 
 class UserRepository(ABC):
@@ -135,15 +192,31 @@ class UserRepository(ABC):
     async def add(self, user: User) -> None: ...
 
 
+class ConsentRepository(ABC):
+    """Согласия даются по ИНН ещё до заявки (/consents/give), заявка копирует их при создании."""
+
+    @abstractmethod
+    async def list_for(self, inn: str, user_id: UUID) -> list[Consent]: ...
+
+    @abstractmethod
+    async def add(self, inn: str, consent: Consent) -> None:
+        """Повторное согласие того же типа заменяет прежнее."""
+
+
 class AuditLogRepository(ABC):
     @abstractmethod
     async def add(self, entry: AuditEntry) -> None: ...
+
+    @abstractmethod
+    async def list_for(self, target_id: UUID) -> list[AuditEntry]:
+        """Записи по объекту в порядке действий."""
 
 
 class UnitOfWork(ABC):
     applications: ApplicationRepository
     contracts: ContractRepository
     users: UserRepository
+    consents: ConsentRepository
     audit: AuditLogRepository
 
     async def __aenter__(self) -> Self:
@@ -179,9 +252,54 @@ class Clock(ABC):
         return self.now().date()
 
 
+class TokenService(ABC):
+    @property
+    @abstractmethod
+    def ttl(self) -> timedelta: ...
+
+    @abstractmethod
+    def issue(self, user: User) -> str: ...
+
+    @abstractmethod
+    def decode(self, token: str) -> TokenClaims:
+        """Бросает TokenInvalid или TokenExpired."""
+
+
+class PasswordHasher(ABC):
+    """Хеширование намеренно медленное, поэтому методы асинхронные.
+
+    Реализация выполняет его вне event loop.
+    """
+
+    @abstractmethod
+    async def hash(self, password: str) -> str: ...
+
+    @abstractmethod
+    async def verify(self, password_hash: str, password: str) -> bool: ...
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class ContractDocumentData:
+    """Что нужно для PDF версии договора, кроме самого договора."""
+
+    contract: Contract
+    version: ContractVersion
+    product_name: str
+    company_name: str
+    inn: str
+    collateral: Collateral | None
+
+
+class ContractDocumentRenderer(ABC):
+    @abstractmethod
+    async def render(self, data: ContractDocumentData) -> bytes:
+        """PDF выбранной версии договора."""
+
+
 class StatusPublisher(ABC):
     @abstractmethod
-    async def publish(self, event: StatusChangedEvent) -> None: ...
+    async def publish(self, event: ApplicationEvent) -> None:
+        """Вызывается только после commit. Ошибка доставки не должна ронять вызывающего."""
 
 
 class TaskRunner(ABC):

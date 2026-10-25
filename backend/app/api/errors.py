@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.schemas.errors import ErrorBody, ErrorDetail, ErrorOut
-from app.domain.errors import DomainError
+from app.domain.errors import DomainError, ValidationFailed
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,10 @@ def _field_path(loc: tuple[int | str, ...]) -> str:
 
 
 async def _domain_error_handler(_: Request, exc: DomainError) -> JSONResponse:
-    return _error_response(exc.http_status, exc.code, exc.message)
+    details = None
+    if isinstance(exc, ValidationFailed):
+        details = [ErrorDetail(field=d.field, code=d.code, message=d.message) for d in exc.details]
+    return _error_response(exc.http_status, exc.code, exc.message, details)
 
 
 async def _validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:

@@ -26,8 +26,19 @@ class AnnuityCalculator:
 
     @classmethod
     def schedule(
-        cls, amount: Money, term_months: int, annual_rate_pct: Decimal, start: date
+        cls,
+        amount: Money,
+        term_months: int,
+        annual_rate_pct: Decimal,
+        start: date,
+        *,
+        skip_months: int = 0,
     ) -> list[ScheduleItem]:
+        """Даты платежей start + (skip_months + n) месяцев.
+
+        Перестроенный график считает даты от исходной даты подписания, а не от уже прижатой
+        к концу короткого месяца: иначе договор от 31-го после февраля платил бы 28-го.
+        """
         payment = cls.payment(amount, term_months, annual_rate_pct)
         rate = cls.monthly_rate(annual_rate_pct)
         balance = amount
@@ -39,7 +50,7 @@ class AnnuityCalculator:
             balance -= principal
             items.append(
                 ScheduleItem(
-                    due_date=add_months(start, month),
+                    due_date=add_months(start, skip_months + month),
                     principal=principal,
                     interest=interest,
                     balance=balance,

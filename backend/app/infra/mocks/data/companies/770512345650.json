@@ -1,0 +1,69 @@
+{
+  "egrul": {
+    "inn": "770512345650",
+    "ogrn": null,
+    "ogrnip": "325774600543210",
+    "full_name": "ИВАНОВА ЕЛЕНА СЕРГЕЕВНА",
+    "short_name": null,
+    "kpp": null,
+    "registration_date": "2025-04-14",
+    "status": "active",
+    "address": "Г.МОСКВА",
+    "entity_type": "individual",
+    "authorized_capital": null,
+    "director": null,
+    "founders": [],
+    "primary_okved": {
+      "code": "56.10",
+      "name": "Деятельность ресторанов и услуги по доставке продуктов питания"
+    },
+    "additional_okveds": [],
+    "has_unreliable_info": false,
+    "unreliable_fields": []
+  },
+  "bki": [],
+  "turnover": {
+    "inn": "770512345650",
+    "has_account": false,
+    "months": [],
+    "summary": null
+  },
+  "fns_transparent": {
+    "inn": "770512345650",
+    "accounts_blocked": false,
+    "mass_address": false,
+    "address_company_count": null,
+    "director": null,
+    "director_disqualified": false,
+    "disqualification_period": null,
+    "founders": [],
+    "has_mass_founder": false,
+    "tax_debt_enforcement": 0,
+    "tax_debt_enforcement_date": "2026-10-01",
+    "arrears_and_penalties": 0,
+    "arrears_and_penalties_date": "2026-09-01",
+    "tax_reporting_missing": false,
+    "employee_count": 4,
+    "employee_count_year": 2025,
+    "taxes_paid": 450000,
+    "revenue_accounting": null,
+    "expense_accounting": null
+  },
+  "gir_bo": {},
+  "fssp": [
+    {
+      "subject": "ИП ИВАНОВА ЕЛЕНА СЕРГЕЕВНА",
+      "subject_inn": "770512345650",
+      "search_type": "person",
+      "cases": [],
+      "total_active_amount": 0,
+      "has_active_cases": false
+    }
+  ],
+  "cbr_kyc": {
+    "inn": "770512345650",
+    "risk_level": "green",
+    "risk_level_date": "2026-10-15",
+    "entity_type": "individual"
+  }
+}

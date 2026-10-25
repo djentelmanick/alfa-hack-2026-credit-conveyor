@@ -1,5 +1,6 @@
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -22,6 +23,7 @@ from app.domain.enums import (
 from app.domain.errors import InvalidStatus, NotFound, OfferExpired, ValidationFailed
 from app.domain.products import ProductCatalog
 from app.domain.value_objects import Collateral, Money
+from tests.fakes.context import make_statement
 
 S = ApplicationStatus
 NOW = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
@@ -99,7 +101,7 @@ def _counter_offer(catalog: ProductCatalog) -> tuple[Application, OfferOption, O
         variant=Variant.UNSECURED,
         amount=Money.of("3600000"),
         term_months=24,
-        rate=None,
+        rate=Decimal("26.5"),
     )
     secured = replace(unsecured, id=uuid4(), variant=Variant.SECURED, amount=Money.of("4500000"))
     app = _in_status(catalog, S.SCORING)
@@ -168,6 +170,53 @@ class TestCreateDraft:
                 product=catalog.get("REVOLVING_LINE"),
                 now=NOW,
             )
+
+
+class TestStatements:
+    @pytest.mark.parametrize("status", [S.DRAFT, S.NEEDS_INFO])
+    def test_statement_is_attached_in_draft_and_needs_info(
+        self, catalog: ProductCatalog, status: ApplicationStatus
+    ) -> None:
+        app = _in_status(catalog, status)
+        statement = make_statement()
+        later = NOW + timedelta(hours=1)
+
+        app.attach_statement(statement, now=later)
+
+        assert app.statements == [statement]
+        assert app.statement(statement.id) is statement
+        assert app.updated_at == later
+
+    @pytest.mark.parametrize("status", [s for s in S if s not in {S.DRAFT, S.NEEDS_INFO}])
+    def test_statements_are_frozen_in_other_statuses(
+        self, catalog: ProductCatalog, status: ApplicationStatus
+    ) -> None:
+        app = _in_status(catalog, status)
+        statement = make_statement()
+        app.statements.append(statement)
+
+        with pytest.raises(InvalidStatus):
+            app.attach_statement(make_statement(), now=NOW)
+        with pytest.raises(InvalidStatus):
+            app.remove_statement(statement.id, now=NOW)
+        assert app.statements == [statement]
+
+    def test_removed_statement_is_returned(self, catalog: ProductCatalog) -> None:
+        app = _draft(catalog)
+        kept, removed = make_statement(), make_statement()
+        app.attach_statement(kept, now=NOW)
+        app.attach_statement(removed, now=NOW)
+
+        assert app.remove_statement(removed.id, now=NOW) is removed
+        assert app.statements == [kept]
+
+    def test_unknown_statement_is_not_found(self, catalog: ProductCatalog) -> None:
+        app = _draft(catalog)
+
+        with pytest.raises(NotFound):
+            app.remove_statement(uuid4(), now=NOW)
+        with pytest.raises(NotFound):
+            app.statement(uuid4())
 
 
 class TestEditing:
@@ -440,6 +489,21 @@ class TestRequestInfo:
         assert request.items == ("COLLATERAL_DESCRIPTION",)
         assert request.created_by == analyst
         assert request.resolved_at is None
+
+    def test_system_request_info_keeps_reason_code_apart_from_message(
+        self, catalog: ProductCatalog
+    ) -> None:
+        app = _in_status(catalog, S.CHECKING)
+
+        app.request_info(
+            ["STATEMENT"], "Загрузите выписку", actor_id=None, now=NOW, reason="STATEMENT_PERIOD"
+        )
+
+        assert app.history[-1].reason == "STATEMENT_PERIOD"
+        assert app.pull_events()[-1].reason == "STATEMENT_PERIOD"
+        request = app.open_info_request
+        assert request is not None
+        assert request.message == "Загрузите выписку"
 
     def test_request_info_needs_at_least_one_item(self, catalog: ProductCatalog) -> None:
         app = _in_status(catalog, S.MANUAL_REVIEW)

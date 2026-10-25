@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Self
 
-from app.domain.enums import Purpose
+from app.domain.enums import CollateralType, Purpose
 from app.domain.errors import NotFound
 from app.domain.products.config import CatalogConfig, ProductConfig
 from app.domain.products.loan_product import LoanProduct, LumpSumLoan, RevolvingCreditLine
@@ -50,6 +50,15 @@ class ProductCatalog:
             return self._products[code]
         except KeyError:
             raise NotFound(f"Продукт {code} не найден") from None
+
+    def purposes_of(self, product_code: str) -> list[Purpose]:
+        return [p for p, cfg in self.config.purposes.items() if product_code in cfg.products]
+
+    def recommendations(self) -> list[Recommendation]:
+        return [self.recommend(purpose) for purpose in self.config.purposes]
+
+    def collateral_types(self) -> dict[CollateralType, str]:
+        return dict(self.config.collateral_types)
 
     def for_purpose(self, purpose: Purpose) -> list[LoanProduct]:
         return [self._products[code] for code in self.config.purposes[purpose].products]

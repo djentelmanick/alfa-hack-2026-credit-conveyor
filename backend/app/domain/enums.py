@@ -152,3 +152,33 @@ class OperationType(StrEnum):
     INTEREST_ACCRUED = "INTEREST_ACCRUED"
     TRANCHE_REPAID = "TRANCHE_REPAID"
     CONTRACT_EDITED = "CONTRACT_EDITED"
+
+
+class PipelineStep(StrEnum):
+    """Шаги внутри CHECKING для сообщения application.step (docs/API.md, раздел 4.7)."""
+
+    EGRUL = "EGRUL"
+    BKI = "BKI"
+    TURNOVER = "TURNOVER"
+    FNS = "FNS"
+    FSSP = "FSSP"
+    CBR_KYC = "CBR_KYC"
+    ROSFIN = "ROSFIN"
+    STATEMENT = "STATEMENT"
+    SCORING = "SCORING"
+
+
+class ContractAction(StrEnum):
+    """Кнопки операций на странице договора (docs/API.md, ContractOut.allowed_operations)."""
+
+    DRAW_TRANCHE = "DRAW_TRANCHE"
+    REPAY_TRANCHE = "REPAY_TRANCHE"
+    PARTIAL_PREPAYMENT = "PARTIAL_PREPAYMENT"
+    FULL_REPAYMENT = "FULL_REPAYMENT"
+
+
+class RepaymentKind(StrEnum):
+    """Вид досрочного погашения в /contracts/repay."""
+
+    PARTIAL = "PARTIAL"
+    FULL = "FULL"

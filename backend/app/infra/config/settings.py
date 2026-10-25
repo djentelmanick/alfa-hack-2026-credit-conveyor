@@ -36,8 +36,11 @@ class Settings(BaseSettings):
     source_retry_attempts: int = Field(default=3, ge=1)
     source_retry_pause_ms: int = Field(default=500, ge=0)
     offer_ttl_days: int = Field(default=7, gt=0)
+    signing_code_ttl_seconds: int = Field(default=300, gt=0)
 
     demo_mode: bool = False
+    # Нужен только seed.py: пароль тестовых учёток не хранится в коде.
+    seed_password: SecretStr | None = None
     cors_origins: CommaSeparated = []
 
 

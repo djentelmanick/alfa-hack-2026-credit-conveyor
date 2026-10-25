@@ -42,6 +42,12 @@ products:
       UNSECURED: {amount_min: 300000, amount_max: 30000000, term_min: 18, term_max: 18, rate_min: 23.5, rate_max: 29.5, revenue_limit_pct: 30, auto_prolong: true}
       SECURED:   {amount_min: 500000, amount_max: 60000000, term_min: 60, term_max: 60, rate_min: 23.0, rate_max: 29.0, revenue_limit_pct: 50, collateral_coverage_min_pct: 50, draw_stop_months_before_end: 6}
 
+collateral_types:
+  REAL_ESTATE: "Недвижимость"
+  VEHICLE: "Транспорт"
+  EQUIPMENT: "Оборудование"
+  GOODS: "Товары в обороте"
+
 industry_risk:   # первые две цифры ОКВЭД
   low:    ["10", "13", "14", "15", "16", "17", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "62", "63", "86"]
   medium: ["45", "46", "47", "55", "56", "95", "96"]
