@@ -17,6 +17,7 @@ dependencies = [
     "pyyaml>=6.0.3",
     "python-multipart>=0.0.32",
     "reportlab>=5.1.0",
+    "aio-pika>=10.2.1",
 ]
 
 [dependency-groups]

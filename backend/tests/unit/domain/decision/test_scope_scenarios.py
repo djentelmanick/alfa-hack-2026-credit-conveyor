@@ -26,7 +26,7 @@ from app.domain.enums import CheckOutcome, CompanyKind, DecisionOutcome, Purpose
 from app.domain.products import ProductCatalog
 from app.domain.value_objects import Money
 from app.infra.mocks import SyntheticData
-from tests.fakes.context import collect_context, make_application, make_collateral
+from tests.fakes.context import checking_data, collect_context, make_application, make_collateral
 from tests.fakes.scenarios import IVANOVA, KOLOS, ROMASHKA, SOKOLOV, TECHPROM
 from tests.fakes.scoring import FixedScoringEngine
 
@@ -64,7 +64,7 @@ def run(catalog: ProductCatalog, scoring: FixedScoringEngine) -> Runner:
 
     def _run(ctx: PipelineContext) -> PathResult:
         for rule in default_stop_rules(catalog):
-            result = rule.check(ctx)
+            result = rule.check(checking_data(ctx))
             if result.outcome is CheckOutcome.STOP_FACTOR:
                 return PathResult(stop_factor=result)
         if ctx.statement is not None:

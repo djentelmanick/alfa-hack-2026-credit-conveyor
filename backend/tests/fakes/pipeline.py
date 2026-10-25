@@ -12,7 +12,7 @@ from app.domain.checks import (
     default_stop_rules,
 )
 from app.domain.decision import DecisionEngine, RatePolicy, default_decision_rules
-from app.domain.ports import Clock, StatusPublisher, UnitOfWork
+from app.domain.ports import Clock, PipelineLock, StatusPublisher, UnitOfWork
 from app.domain.scoring import ScoringModel
 from app.infra.config.catalog import load_catalog
 from app.infra.mocks import (
@@ -36,6 +36,7 @@ from app.infra.retrying import (
     RetryingTaxService,
     RetryPolicy,
 )
+from tests.fakes.runtime import InMemoryPipelineLock
 
 RETRY_ATTEMPTS = 3
 OFFER_TTL = timedelta(days=7)
@@ -62,6 +63,7 @@ def make_pipeline(
     scoring: ScoringModel,
     fixtures: SyntheticData,
     failures: MockFailures,
+    lock: PipelineLock | None = None,
 ) -> PipelineOrchestrator:
     catalog = load_catalog()
     verifier = StatementVerifier(default_authenticity_strategies())
@@ -77,6 +79,7 @@ def make_pipeline(
             default_decision_rules(catalog, RatePolicy()), default_manual_review_triggers()
         ),
         publisher=publisher,
+        lock=lock or InMemoryPipelineLock(),
         clock=clock,
         offer_ttl=OFFER_TTL,
     )

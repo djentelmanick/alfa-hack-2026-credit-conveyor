@@ -123,6 +123,7 @@ class ApplicationRow(Base):
     accepted_offer_id: Mapped[UUID | None]
     # Без внешнего ключа: договор сам ссылается на заявку, встречная ссылка дала бы цикл.
     contract_id: Mapped[UUID | None]
+    pipeline_run_id: Mapped[UUID | None]
     signing_code: Mapped[str | None] = mapped_column(String(16))
     signing_code_expires_at: Mapped[datetime | None]
     scoring_total: Mapped[int | None] = mapped_column(Integer)
@@ -378,6 +379,18 @@ class TrancheRow(Base):
     issued_at: Mapped[date] = mapped_column(Date)
     due_at: Mapped[date] = mapped_column(Date)
     outstanding: Mapped[Decimal] = mapped_column(MONEY)
+
+
+# --- Демо ---
+
+
+class MockFailureRow(Base):
+    """Режим «сломаться» у моков: общий для api и worker, поэтому в БД, а не в памяти."""
+
+    __tablename__ = "mock_failures"
+
+    source: Mapped[str] = mapped_column(ENUM, primary_key=True)
+    inn: Mapped[str] = mapped_column(INN, primary_key=True)
 
 
 # --- Аудит ---

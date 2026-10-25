@@ -26,6 +26,7 @@ from tests.fakes.context import (
     COMPANY_INN,
     DIRECTOR_INN,
     FOUNDER_INN,
+    checking_data,
     clean_report,
     clean_tax,
     make_company,
@@ -35,7 +36,7 @@ from tests.fakes.scenarios import TODAY
 
 
 def _stopped(rule: StopFactorRule, ctx: PipelineContext) -> bool:
-    result = rule.check(ctx)
+    result = rule.check(checking_data(ctx))
     assert result.code == rule.code
     assert result.stage is CheckStage.CHECKING
     assert result.outcome in (CheckOutcome.PASSED, CheckOutcome.STOP_FACTOR)
@@ -188,6 +189,6 @@ def test_director_disqualified(disqualified: bool) -> None:
 
 def test_rule_explains_what_was_found() -> None:
     ctx = make_context(company=replace(make_company(), status=CompanyStatus.LIQUIDATED))
-    result = CompanyInactiveRule().check(ctx)
+    result = CompanyInactiveRule().check(checking_data(ctx))
     assert result.expected
     assert result.actual

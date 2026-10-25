@@ -13,7 +13,6 @@ from app.application.company_service import CompanyService
 from app.application.consent_service import ConsentService
 from app.application.contract_service import ContractService
 from app.application.emulation_service import EmulationService
-from app.application.expiration_job import ExpirationJob
 from app.application.signing_service import SigningService
 from app.domain.entities import TokenClaims
 from app.domain.enums import Role, SourceType
@@ -39,7 +38,7 @@ class RealtimeHub(Protocol):
 class MockFailureSwitch(Protocol):
     """Режим «сломаться» у моков источников, только для демо."""
 
-    def set(self, source: SourceType, inn: str, *, enabled: bool) -> None: ...
+    async def set(self, source: SourceType, inn: str, *, enabled: bool) -> None: ...
 
 
 class Lifecycle(Protocol):
@@ -66,7 +65,6 @@ class Container:
     signing: SigningService
     contracts: ContractService
     emulation: EmulationService
-    expiration: ExpirationJob
     realtime: RealtimeHub
     mock_failures: MockFailureSwitch
     lifecycle: Lifecycle

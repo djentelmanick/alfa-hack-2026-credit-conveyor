@@ -5,7 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.api.v1.schemas.common import INN_PATTERN, MoneyStr, RateStr, RequestModel
+from app.api.v1.schemas.common import INN_PATTERN, MoneyStr, Percent, RateStr, RequestModel
+from app.api.v1.schemas.company import OkvedOut
 from app.api.v1.schemas.labels import INFO_ITEM_LABELS, STATUS_LABELS, reason_label
 from app.application.application_service import (
     UNSET,
@@ -16,12 +17,14 @@ from app.application.application_service import (
     HistoryEntry,
     PresignedUrl,
 )
+from app.application.findings_builder import ApplicationFindings
 from app.domain.entities import Application, ApplicationForm, BankStatement, InfoRequest
 from app.domain.enums import (
     AllowedAction,
     ApplicationStatus,
     CollateralType,
     CompanyKind,
+    CompanyStatus,
     DecisionOutcome,
     ProductCode,
     Purpose,
@@ -437,4 +440,118 @@ class StatusTransitionOut(BaseModel):
             ),
             reason=t.reason or None,
             at=t.at,
+        )
+
+
+class FindingsFounderOut(BaseModel):
+    full_name: str
+    share_pct: Percent
+
+
+class FindingsCompanyOut(BaseModel):
+    inn: str
+    kind: CompanyKind
+    name: str
+    ogrn: str
+    registered_at: date
+    status: CompanyStatus
+    okved: OkvedOut
+    address: str
+    director: str
+    founders: list[FindingsFounderOut]
+
+
+class CreditLoadOut(BaseModel):
+    has_history: bool
+    monthly_payments: MoneyStr
+
+
+class TurnoverMonthOut(BaseModel):
+    month: str
+    incoming: MoneyStr
+
+
+class AccountTurnoverOut(BaseModel):
+    months: list[TurnoverMonthOut]
+    total_incoming: MoneyStr
+
+
+class AnnualReportOut(BaseModel):
+    year: int
+    revenue: MoneyStr
+
+
+class RevenueOut(BaseModel):
+    account_turnover: AccountTurnoverOut | None = None
+    annual_report: AnnualReportOut | None = None
+
+
+class ApplicationFindingsOut(BaseModel):
+    application_id: UUID
+    collected_at: datetime
+    company: FindingsCompanyOut | None = None
+    credit_load: CreditLoadOut | None = None
+    revenue: RevenueOut | None = None
+
+    @classmethod
+    def from_domain(cls, findings: ApplicationFindings) -> Self:
+        company = findings.company
+        credit = findings.credit_load
+        turnover = findings.account_turnover
+        report = findings.annual_report
+        revenue = (
+            RevenueOut(
+                account_turnover=(
+                    AccountTurnoverOut(
+                        months=[
+                            TurnoverMonthOut(
+                                month=m.month.strftime("%Y-%m"), incoming=m.incoming.amount
+                            )
+                            for m in turnover.months
+                        ],
+                        total_incoming=turnover.total().amount,
+                    )
+                    if turnover is not None
+                    else None
+                ),
+                annual_report=(
+                    AnnualReportOut(year=report.year, revenue=report.revenue.amount)
+                    if report is not None
+                    else None
+                ),
+            )
+            if turnover is not None or report is not None
+            else None
+        )
+        return cls(
+            application_id=findings.application_id,
+            collected_at=findings.collected_at,
+            company=(
+                FindingsCompanyOut(
+                    inn=company.inn,
+                    kind=company.kind,
+                    name=company.name,
+                    ogrn=company.ogrn,
+                    registered_at=company.registered_at,
+                    status=company.status,
+                    okved=OkvedOut(code=company.okved, label=company.okved_label),
+                    address=company.address,
+                    director=company.director,
+                    founders=[
+                        FindingsFounderOut(full_name=f.full_name, share_pct=f.share_pct)
+                        for f in company.founders
+                    ],
+                )
+                if company is not None
+                else None
+            ),
+            credit_load=(
+                CreditLoadOut(
+                    has_history=credit.has_history,
+                    monthly_payments=credit.monthly_payments.amount,
+                )
+                if credit is not None
+                else None
+            ),
+            revenue=revenue,
         )

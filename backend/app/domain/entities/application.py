@@ -80,6 +80,7 @@ class Application:
         expires_at: datetime | None = None,
         accepted_offer_id: UUID | None = None,
         contract_id: UUID | None = None,
+        pipeline_run_id: UUID | None = None,
         signing_code: SigningCode | None = None,
         consents: Iterable[Consent] = (),
         statements: Iterable[BankStatement] = (),
@@ -110,6 +111,7 @@ class Application:
         self.expires_at = expires_at
         self.accepted_offer_id = accepted_offer_id
         self.contract_id = contract_id
+        self.pipeline_run_id = pipeline_run_id
         self.signing_code = signing_code
         self.consents = list(consents)
         self.statements = list(statements)
@@ -233,6 +235,7 @@ class Application:
         if (request := self.open_info_request) is not None:
             request.resolved_at = now
         self.transition_to(S.SUBMITTED, actor_id=actor_id, reason="Заявка отправлена", now=now)
+        self.pipeline_run_id = uuid4()
 
     def request_info(
         self,
@@ -326,13 +329,14 @@ class Application:
         if self._status is not S.SIGNING:
             raise InvalidStatus("Подписание доступно только после принятия условий")
 
-    def failed_sources(self) -> list[SourceType]:
+    def missing_sources(self) -> list[SourceType]:
+        """Источники, которые не ответили или не запрашивались (FAILED или SKIPPED)."""
         return list(
-            dict.fromkeys(s.source for s in self.snapshots if s.status is FetchStatus.FAILED)
+            dict.fromkeys(s.source for s in self.snapshots if s.status is not FetchStatus.OK)
         )
 
     def ensure_sources_ready(self) -> None:
-        if not self.snapshots or self.failed_sources():
+        if not self.snapshots or self.missing_sources():
             raise SourcesNotReady()
 
     def approve_by_analyst(
@@ -418,6 +422,8 @@ class Application:
         self.transition_to(
             S.CHECKING, actor_id=actor_id, reason="Повторная проверка источников", now=now
         )
+        # Новый прогон: задачи прежнего, ещё лежащие в очереди, worker пропустит.
+        self.pipeline_run_id = uuid4()
 
     def _ensure_manual_review(self, comment: str) -> None:
         if not comment.strip():

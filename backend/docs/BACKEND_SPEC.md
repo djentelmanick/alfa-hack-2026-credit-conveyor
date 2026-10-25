@@ -1250,7 +1250,9 @@ RetryingGateway o-- MockSourceAdapter : оборачивает
 - Режим «сломаться»: общий реестр `MockFailures` с множеством ИНН на каждый `SourceType`
   (`MockSourceAdapter.raise_if_broken(source, *inns)`). Ключ это источник, а не адаптер, потому что `MockFnsAdapter`
   отвечает и за `FNS`, и за `GIR_BO`. Сломанный ИНН компании ломает и запросы БКИ и ФССП по её директору и учредителям.
-  `/dev/mocks/failures` меняет этот реестр.
+  `/dev/mocks/failures` меняет этот реестр. Реестр хранится в таблице `mock_failures(source, inn)` (`SqlMockFailures`,
+  `app/infra/db/mock_failures.py`): поломку включает `api`, а источники этапа 2 опрашивает `worker`, память у них
+  не общая. In-memory `MockFailures` остаётся для тестов, где оба процесса работают в одном.
 - Каждый мок делает задержку `PIPELINE_STEP_DELAY_MS`, чтобы смена статусов была видна на демо.
 - `RetryingGateway[P]` (`app/infra/retrying.py`) это декоратор: для каждого порта есть обёртка, реализующая тот же
   порт (`RetryingCompanyRegistry`, `RetryingCreditBureau` и т.д.), поэтому конвейер не знает о повторах.
@@ -1304,14 +1306,21 @@ RetryingGateway o-- MockSourceAdapter : оборачивает
 - Подтверждение ручное, `prefetch_count = WORKER_PREFETCH`.
 - **ack только после commit** последнего шага и публикации его событий.
 - Тело не JSON, нет полей, не UUID, заявки нет: `reject(requeue=False)`, сообщение сразу уходит в DLQ.
-- Любая другая ошибка (например, PostgreSQL недоступен): `nack(requeue=True)`. После 5 доставок RabbitMQ сам
-  переводит сообщение в DLQ. Такая заявка остаётся в своём статусе, и reconciler поставит её снова.
+- Любая другая ошибка (например, PostgreSQL недоступен): пауза 2 с и `nack(requeue=True)`. В RabbitMQ 4 такой
+  возврат увеличивает только `x-acquired-count`, а `x-delivery-count` и `x-delivery-limit` считают лишь аварийные
+  возвраты (обрыв канала), поэтому попытки consumer считает сам по большему из двух заголовков. На пятой попытке
+  он вызывает `PipelineOrchestrator.give_up`: заявка уходит в `MANUAL_REVIEW` с
+  `Decision(MANUAL_REVIEW, reasons=[PIPELINE_FAILED])`, сообщение подтверждается. Если и `give_up` не удался
+  (БД недоступна), `reject(requeue=False)` отправляет сообщение в DLQ, заявка остаётся в своём статусе,
+  и reconciler поставит её снова.
 
 ### Идемпотентность
 
 `PipelineOrchestrator.run(application_id, run_id)`:
 
-1. Захватывает `PipelineLock`. Не захватил, значит заявку ведёт другой worker: задача подтверждается без работы.
+1. Захватывает `PipelineLock`, при неудаче повторяет до 10 раз с паузой 1 с: блокировку может держать прогон,
+   который уже закоммитил итог и дописывает события, а пришедшая задача от нового прогона (recheck, повторная
+   отправка). Не захватил и после этого, значит заявку ведёт другой worker: задача подтверждается без работы.
    Если тот worker упадёт, RabbitMQ доставит его собственное неподтверждённое сообщение заново.
 2. Статус не `SUBMITTED`, `CHECKING` или `SCORING`, либо `run_id` не равен `Application.pipeline_run_id`
    (дубль, задача прогона до recheck): задача подтверждается без работы.

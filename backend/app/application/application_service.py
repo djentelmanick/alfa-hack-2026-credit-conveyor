@@ -1,10 +1,11 @@
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import Enum
 from uuid import UUID, uuid4
 
+from app.application.findings_builder import ApplicationFindings, FindingsBuilder
 from app.application.form_validator import FormValidator
 from app.domain.entities import (
     Application,
@@ -21,6 +22,7 @@ from app.domain.errors import (
     FieldError,
     FileTooLarge,
     Forbidden,
+    InvalidStatus,
     NotDirector,
     NotFound,
     StorageUnavailable,
@@ -30,10 +32,11 @@ from app.domain.ports import (
     Clock,
     CompanyRegistryPort,
     FileStoragePort,
+    PipelineTask,
     SignatureVerifierPort,
     StatementParser,
     StatusPublisher,
-    TaskRunner,
+    TaskQueue,
     UnitOfWork,
 )
 from app.domain.products import LoanProduct, ProductCatalog
@@ -45,7 +48,21 @@ logger = logging.getLogger(__name__)
 
 CLIENT_CANCEL_REASON = "Отменено клиентом"
 
-type PipelineJob = Callable[[UUID], Awaitable[None]]
+# Пока заявка в этих статусах, worker ещё обходит источники: отчёт и findings недоступны.
+COLLECTING_STATUSES = frozenset({ApplicationStatus.SUBMITTED, ApplicationStatus.CHECKING})
+
+
+async def start_pipeline(queue: TaskQueue, app: Application) -> None:
+    """Ставит задачу конвейера после commit.
+
+    Ошибку только логируем: заявка уже сохранена, и её подхватит PipelineReconciler.
+    """
+    if app.pipeline_run_id is None:
+        raise ValueError(f"У заявки {app.id} нет pipeline_run_id")
+    try:
+        await queue.enqueue(PipelineTask(application_id=app.id, run_id=app.pipeline_run_id))
+    except Exception:
+        logger.exception("Не удалось поставить заявку %s в очередь конвейера", app.id)
 
 
 class _Unset(Enum):
@@ -157,19 +174,19 @@ class ApplicationService:
         catalog: ProductCatalog,
         registry: CompanyRegistryPort,
         validator: FormValidator,
-        runner: TaskRunner,
-        pipeline: PipelineJob,
+        queue: TaskQueue,
         publisher: StatusPublisher,
         clock: Clock,
+        findings: FindingsBuilder,
         statements: StatementFiles,
     ) -> None:
         self._uow = uow
+        self._findings = findings
         self._statements = statements
         self._catalog = catalog
         self._registry = registry
         self._validator = validator
-        self._runner = runner
-        self._pipeline = pipeline
+        self._queue = queue
         self._publisher = publisher
         self._clock = clock
 
@@ -310,7 +327,7 @@ class ApplicationService:
             app.record_checks(CheckStage.FORM, checks)
             await uow.commit()
         await self._publish(app)
-        self._runner.enqueue(self._pipeline, app.id)
+        await start_pipeline(self._queue, app)
         logger.info("Заявка %s отправлена в конвейер", app.id)
         return app
 
@@ -373,6 +390,13 @@ class ApplicationService:
         if decision is None:
             raise NotFound("Решения по заявке ещё нет")
         return DecisionView(decision=decision, scoring=app.scoring, expires_at=app.expires_at)
+
+    async def findings(self, claims: TokenClaims, application_id: UUID) -> ApplicationFindings:
+        async with self._uow() as uow:
+            app = await self._own(uow, claims, application_id)
+        if app.status in COLLECTING_STATUSES or not app.snapshots:
+            raise InvalidStatus("Проверка по источникам ещё идёт или не запускалась")
+        return self._findings.build(app)
 
     async def _run_validator(self, uow: UnitOfWork, app: Application) -> list[CheckResult]:
         app.replace_consents(await uow.consents.list_for(app.inn, app.applicant_id))

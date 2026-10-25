@@ -26,6 +26,7 @@ from tests.fakes.scoring import FixedScoringEngine
 from tests.fakes.uow import InMemoryStore
 
 S = ApplicationStatus
+RUN_ID = uuid4()
 
 STATEMENTS_DIR = (
     Path(__file__).resolve().parents[3] / "app" / "infra" / "mocks" / "data" / "statements"
@@ -56,6 +57,7 @@ async def _submitted(
         statements=statements,
     )
     app.transition_to(S.SUBMITTED, actor_id=app.applicant_id, reason="Заявка отправлена", now=NOW)
+    app.pipeline_run_id = RUN_ID
     app.pull_events()
     await store.applications.add(app)
     return app
@@ -76,7 +78,7 @@ async def test_each_status_is_published_after_its_own_commit(
     )
     app = await _submitted(store)
 
-    await pipeline.run(app.id)
+    await pipeline.run(app.id, RUN_ID)
 
     status_commits = [
         commits
@@ -102,7 +104,7 @@ async def test_failed_commit_publishes_nothing(fixtures: SyntheticData) -> None:
     store.fail_commits = True
 
     with pytest.raises(RuntimeError, match="commit"):
-        await pipeline.run(app.id)
+        await pipeline.run(app.id, RUN_ID)
 
     assert publisher.events == []
 
@@ -145,7 +147,7 @@ async def test_pipeline_checks_the_last_attached_statement(
         statements=attached,
     )
 
-    await pipeline.run(app.id)
+    await pipeline.run(app.id, RUN_ID)
 
     assert publisher.statuses() == expected
 
@@ -154,7 +156,7 @@ async def test_pipeline_logs_carry_application_id(
     fixtures: SyntheticData, caplog: pytest.LogCaptureFixture
 ) -> None:
     failures = MockFailures()
-    failures.set(SourceType.FSSP, KOLOS, enabled=True)
+    await failures.set(SourceType.FSSP, KOLOS, enabled=True)
     store = InMemoryStore()
     pipeline = make_pipeline(
         uow=store.uow,
@@ -168,7 +170,7 @@ async def test_pipeline_logs_carry_application_id(
     caplog.handler.addFilter(ApplicationIdFilter())
 
     with caplog.at_level(logging.INFO):
-        await pipeline.run(app.id)
+        await pipeline.run(app.id, RUN_ID)
 
     source_warnings = [r for r in caplog.records if "FSSP" in r.getMessage()]
     assert source_warnings

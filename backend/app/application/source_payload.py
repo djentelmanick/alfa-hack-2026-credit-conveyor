@@ -10,7 +10,16 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 
-from app.domain.value_objects import Money, MonthlyTurnover, MonthRevenue, Payer
+from app.domain.enums import CompanyKind, CompanyStatus
+from app.domain.value_objects import (
+    CompanyProfile,
+    CreditReport,
+    Founder,
+    Money,
+    MonthlyTurnover,
+    MonthRevenue,
+    Payer,
+)
 
 type JsonValue = str | int | bool | list[JsonValue] | dict[str, JsonValue] | None
 
@@ -41,6 +50,67 @@ def _json(value: object) -> JsonValue:
         case float():
             return format(Decimal(str(value)), "f")
     raise TypeError(f"Нельзя сохранить в снимок значение типа {type(value).__name__}")
+
+
+def company_from_payload(payload: Mapping[str, object]) -> CompanyProfile | None:
+    """None, если снимок не в формате to_payload(CompanyProfile)."""
+    try:
+        founders = payload.get("founders")
+        changed_at = payload.get("director_changed_at")
+        return CompanyProfile(
+            inn=str(payload["inn"]),
+            kind=CompanyKind(str(payload["kind"])),
+            name=str(payload["name"]),
+            ogrn=str(payload["ogrn"]),
+            registered_at=date.fromisoformat(str(payload["registered_at"])),
+            status=CompanyStatus(str(payload["status"])),
+            okved=str(payload["okved"]),
+            director=str(payload["director"]),
+            director_inn=str(payload["director_inn"]),
+            address=str(payload["address"]),
+            founders=tuple(
+                Founder(
+                    full_name=str(f["full_name"]),
+                    inn=str(f["inn"]),
+                    share_pct=Decimal(str(f["share_pct"])),
+                )
+                for f in (founders if isinstance(founders, Sequence) else ())
+                if isinstance(f, Mapping)
+            ),
+            director_changed_at=date.fromisoformat(str(changed_at)) if changed_at else None,
+            okved_label=str(payload.get("okved_label", "")),
+        )
+    except KeyError, ValueError:
+        return None
+
+
+def credit_report_from_payload(payload: Mapping[str, object]) -> CreditReport | None:
+    """None, если снимок не в формате to_payload(CreditReport)."""
+    try:
+        return CreditReport(
+            subject_inn=str(payload["subject_inn"]),
+            has_history=bool(payload["has_history"]),
+            current_overdue_days=int(str(payload["current_overdue_days"])),
+            max_closed_overdue_days_last_year=int(
+                str(payload["max_closed_overdue_days_last_year"])
+            ),
+            monthly_payments=Money.of(str(payload["monthly_payments"])),
+            has_closed_loans_without_overdue=bool(payload["has_closed_loans_without_overdue"]),
+            inquiries_last_3_months=int(str(payload["inquiries_last_3_months"])),
+        )
+    except KeyError, ValueError:
+        return None
+
+
+def money_from_payload(payload: Mapping[str, object]) -> Money | None:
+    """Скалярный ответ-сумма, сохранённый как {"value": "..."}; None, если суммы нет."""
+    value = payload.get("value")
+    if value is None:
+        return None
+    try:
+        return Money.of(str(value))
+    except ArithmeticError, ValueError:
+        return None
 
 
 def turnover_from_payload(payload: Mapping[str, object]) -> MonthlyTurnover | None:

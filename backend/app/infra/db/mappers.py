@@ -169,6 +169,7 @@ def application_to_row(app: Application) -> ApplicationRow:
         expires_at=app.expires_at,
         accepted_offer_id=app.accepted_offer_id,
         contract_id=app.contract_id,
+        pipeline_run_id=app.pipeline_run_id,
         signing_code=app.signing_code.code if app.signing_code else None,
         signing_code_expires_at=app.signing_code.expires_at if app.signing_code else None,
         scoring_total=scoring.total if scoring else None,
@@ -343,6 +344,7 @@ def application_from_row(row: ApplicationRow) -> Application:
         expires_at=row.expires_at,
         accepted_offer_id=row.accepted_offer_id,
         contract_id=row.contract_id,
+        pipeline_run_id=row.pipeline_run_id,
         signing_code=(
             SigningCode(code=row.signing_code, expires_at=row.signing_code_expires_at)
             if row.signing_code is not None and row.signing_code_expires_at is not None

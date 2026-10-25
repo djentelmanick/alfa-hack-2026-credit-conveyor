@@ -182,7 +182,7 @@ async def test_storage_down_attaches_nothing(world: World) -> None:
 async def test_signature_service_down_is_source_unavailable(world: World) -> None:
     owner = _claims()
     app = await world.application(owner)
-    world.failures.set(SourceType.BANK_SIGNATURE, IVANOVA, enabled=True)
+    await world.failures.set(SourceType.BANK_SIGNATURE, IVANOVA, enabled=True)
 
     with pytest.raises(SourceUnavailable):
         await world.service.attach_statement(owner, app.id, _file())

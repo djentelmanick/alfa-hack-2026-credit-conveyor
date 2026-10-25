@@ -1,4 +1,4 @@
-from app.domain.checks.context import PipelineContext, Verification
+from app.domain.checks.context import CheckingData, PipelineContext, Verification
 from app.domain.checks.manual_review import (
     AmountOver5mTrigger,
     CbrYellowLevelTrigger,
@@ -38,6 +38,7 @@ __all__ = [
     "BusinessAgeUnder6mRule",
     "CbrRedLevelRule",
     "CbrYellowLevelTrigger",
+    "CheckingData",
     "CompanyInactiveRule",
     "CurrentOverdueOver30Rule",
     "DirectorBailiffOver10kTrigger",

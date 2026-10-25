@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 from app.domain.entities import Application, BankStatement, CheckResult
-from app.domain.enums import KycLevel
+from app.domain.enums import KycLevel, SourceType
 from app.domain.value_objects import (
     BailiffInfo,
     CompanyProfile,
@@ -19,6 +19,33 @@ class Verification:
 
     verified: bool
     checks: tuple[CheckResult, ...] = ()
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class CheckingData:
+    """То, что удалось собрать. Поле не ответившего или не запрошенного источника пустое,
+    а сам источник лежит в missing: по этим данным стоп-факторы считаются и при сбоях,
+    чтобы аналитик видел в отчёте всё, что нашлось (SCOPE, раздел 4).
+    """
+
+    application: Application
+    company: CompanyProfile | None = None
+    credit_report: CreditReport | None = None
+    related_credit_reports: tuple[CreditReport, ...] = ()
+    turnover: MonthlyTurnover | None = None
+    statement: BankStatement | None = None
+    tax: TaxInfo | None = None
+    bailiff: BailiffInfo | None = None
+    director_bailiff: BailiffInfo | None = None
+    cbr_level: KycLevel | None = None
+    rosfin_hit: bool | None = None
+    reported_annual_revenue: Money | None = None
+    missing: frozenset[SourceType] = frozenset()
+    now: datetime
+
+    @property
+    def today(self) -> date:
+        return self.now.date()
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
