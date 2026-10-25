@@ -196,6 +196,9 @@ class UserRepository(ABC):
     async def get_by_login(self, login: str) -> User | None: ...
 
     @abstractmethod
+    async def get_by_inn(self, inn: str) -> User | None: ...
+
+    @abstractmethod
     async def add(self, user: User) -> None: ...
 
 

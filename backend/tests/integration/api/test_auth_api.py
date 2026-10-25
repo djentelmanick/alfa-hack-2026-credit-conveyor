@@ -16,6 +16,7 @@ REGISTER_BODY: dict[str, Any] = {
     "login": "new-client",
     "password": PASSWORD,
     "full_name": "Петров Алексей Николаевич",
+    "inn": "771401234587",
     "passport": {"series": "4510", "number": "654321", "issued_at": "2015-03-01"},
 }
 
@@ -45,7 +46,7 @@ async def test_register_returns_user_out(client: AsyncClient) -> None:
 
     assert response.status_code == 201
     body = response.json()
-    assert set(body) == {"id", "role", "full_name", "passport_verified", "companies"}
+    assert set(body) == {"id", "role", "full_name", "inn", "passport_verified", "companies"}
     assert body["role"] == "CLIENT"
     assert body["full_name"] == "Петров Алексей Николаевич"
     assert body["passport_verified"] is True
@@ -95,7 +96,13 @@ async def test_login_returns_login_out(
     assert body["expires_in"] == int(TOKEN_TTL.total_seconds())
     assert body["user"]["id"] == str(director.id)
     assert body["user"]["companies"] == [
-        {"inn": "7714012340", "name": 'ООО "ПЕКАРНЯ КОЛОС"', "kind": "LLC", "is_director": True}
+        {
+            "inn": "7714012340",
+            "name": 'ООО "ПЕКАРНЯ КОЛОС"',
+            "kind": "LLC",
+            "is_director": True,
+            "basis": None,
+        }
     ]
     assert container.tokens.decode(body["access_token"]).user_id == director.id
 

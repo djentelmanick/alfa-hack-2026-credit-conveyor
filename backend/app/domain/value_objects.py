@@ -135,7 +135,8 @@ class CompanyProfile:
     okved_label: str = ""
 
     def is_director(self, user: User) -> bool:
-        return user.full_name.casefold() == self.director.casefold()
+        # ФИО в аккаунте вводится свободным текстом и совпадает у тёзок, ИНН однозначен.
+        return user.inn is not None and user.inn == self.director_inn
 
     def is_founder(self, user: User) -> bool:
         return user.inn is not None and any(f.inn == user.inn for f in self.founders)

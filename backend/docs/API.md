@@ -40,8 +40,9 @@
 | 401 | `TOKEN_EXPIRED` | истёк `exp`, нужно войти заново |
 | 401 | `INVALID_CREDENTIALS` | неверный логин или пароль |
 | 403 | `FORBIDDEN` | роль не подходит или объект чужой |
-| 403 | `NOT_DIRECTOR` | пользователь не руководитель компании |
+| 403 | `NOT_DIRECTOR` | пользователь не руководитель компании, не сам ИП и не представитель с подтверждённой доверенностью |
 | 409 | `LOGIN_TAKEN` | при регистрации: логин уже занят (без учёта регистра) |
+| 409 | `INN_TAKEN` | при регистрации: аккаунт с этим ИНН физлица уже есть |
 | 404 | `NOT_FOUND` | объект не найден |
 | 409 | `INVALID_STATUS` | действие недоступно в текущем статусе |
 | 409 | `ACTIVE_APPLICATION_EXISTS` | по ИНН уже есть активная заявка |
@@ -66,7 +67,7 @@
 
 | Эндпоинт | Метод | Доступ | Запрос | Ответ | Ошибки |
 |---|---|---|---|---|---|
-| `/auth/register` | POST | П | `{login, password, full_name, passport: {series, number, issued_at}}` | `201 UserOut` | 409 `LOGIN_TAKEN`, 422 паспорт недействителен (`details[].code = PASSPORT_INVALID`) |
+| `/auth/register` | POST | П | `{login, password, full_name, inn, passport: {series, number, issued_at}}`, `inn` — 12 цифр ИНН физлица | `201 UserOut` | 409 `LOGIN_TAKEN`, 409 `INN_TAKEN`, 422 паспорт недействителен (`details[].code = PASSPORT_INVALID`), 422 неверные контрольные разряды ИНН (`details[].code = INN_INVALID`) |
 | `/auth/login` | POST | П | `{login, password}` | `200 LoginOut` | 401 `INVALID_CREDENTIALS` |
 | `/auth/me` | GET | К+А | без параметров | `200 UserOut` | 401 |
 
@@ -298,9 +299,10 @@ type ISODateTime = string; // "2026-10-24T12:31:00Z"
 
 ```ts
 interface UserOut {
-  id: string; role: Role; full_name: string; passport_verified: boolean;
+  id: string; role: Role; full_name: string; inn: string | null; passport_verified: boolean;
   // Компании, по которым пользователь давал согласия (/consents/give). У seed-учёток это их компания.
-  companies: { inn: string; name: string; kind: CompanyKind; is_director: boolean }[];
+  // basis: основание полномочий (SOLE_TRADER | DIRECTOR | POWER_OF_ATTORNEY), null у привязок до этой версии
+  companies: { inn: string; name: string; kind: CompanyKind; is_director: boolean; basis: AuthorityBasis | null }[];
 }
 
 interface LoginOut {

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from app.api.v1.schemas.common import RequestModel
 from app.application.auth_service import AccessToken, Passport, Registration
 from app.domain.entities import User
-from app.domain.enums import CompanyKind, Role
+from app.domain.enums import AuthorityBasis, CompanyKind, Role
 
 
 class PassportIn(RequestModel):
@@ -20,6 +20,7 @@ class RegisterIn(RequestModel):
     login: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9._@-]+$")
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=3, max_length=255)
+    inn: str = Field(pattern=r"^[0-9]{12}$")
     passport: PassportIn
 
     def to_registration(self) -> Registration:
@@ -27,6 +28,7 @@ class RegisterIn(RequestModel):
             login=self.login,
             password=self.password,
             full_name=self.full_name,
+            inn=self.inn,
             passport=Passport(
                 series=self.passport.series,
                 number=self.passport.number,
@@ -45,12 +47,14 @@ class UserCompanyOut(BaseModel):
     name: str
     kind: CompanyKind
     is_director: bool
+    basis: AuthorityBasis | None = None
 
 
 class UserOut(BaseModel):
     id: UUID
     role: Role
     full_name: str
+    inn: str | None
     passport_verified: bool
     companies: list[UserCompanyOut]
 
@@ -60,9 +64,16 @@ class UserOut(BaseModel):
             id=user.id,
             role=user.role,
             full_name=user.full_name,
+            inn=user.inn,
             passport_verified=user.passport_verified,
             companies=[
-                UserCompanyOut(inn=c.inn, name=c.name, kind=c.kind, is_director=c.is_director)
+                UserCompanyOut(
+                    inn=c.inn,
+                    name=c.name,
+                    kind=c.kind,
+                    is_director=c.is_director,
+                    basis=c.authority.basis if c.authority else None,
+                )
                 for c in user.companies
             ],
         )

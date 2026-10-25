@@ -8,6 +8,7 @@ from app.domain.entities import TokenClaims, User
 from app.domain.enums import Role
 from app.domain.errors import (
     FieldError,
+    InnTaken,
     InvalidCredentials,
     LoginTaken,
     NotFound,
@@ -15,6 +16,7 @@ from app.domain.errors import (
     ValidationFailed,
 )
 from app.domain.ports import Clock, PassportCheckPort, PasswordHasher, TokenService, UnitOfWork
+from app.domain.value_objects import is_valid_person_inn
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -29,6 +31,7 @@ class Registration:
     login: str
     password: str
     full_name: str
+    inn: str
     passport: Passport
 
 
@@ -63,16 +66,23 @@ class AuthService:
     async def register(self, data: Registration) -> User:
         """Сам клиент регистрируется только с ролью CLIENT, аналитиков заводит seed."""
         login = normalize_login(data.login)
+        if not is_valid_person_inn(data.inn):
+            raise ValidationFailed(
+                [FieldError("inn", "INN_INVALID", "Неверный ИНН: проверьте все 12 цифр")]
+            )
         await self._check_passport(data.passport)
         async with self._uow() as uow:
             if await uow.users.get_by_login(login) is not None:
                 raise LoginTaken()
+            if await uow.users.get_by_inn(data.inn) is not None:
+                raise InnTaken()
             user = User(
                 id=uuid4(),
                 login=login,
                 password_hash=await self._hasher.hash(data.password),
                 role=Role.CLIENT,
                 full_name=" ".join(data.full_name.split()),
+                inn=data.inn,
                 # Паспорт после проверки не храним: дальше нужен только факт, что он действителен.
                 passport_verified=True,
                 created_at=self._clock.now(),

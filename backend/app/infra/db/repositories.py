@@ -93,6 +93,12 @@ class SqlUserRepository(UserRepository):
             return None
         return self.tracked.find(row.id) or self.tracked.loaded(user_from_row(row))
 
+    async def get_by_inn(self, inn: str) -> User | None:
+        row = await self._session.scalar(select(UserRow).where(UserRow.inn == inn))
+        if row is None:
+            return None
+        return self.tracked.find(row.id) or self.tracked.loaded(user_from_row(row))
+
     async def add(self, user: User) -> None:
         self.tracked.add(user)
 

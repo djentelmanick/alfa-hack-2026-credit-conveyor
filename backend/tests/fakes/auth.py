@@ -67,11 +67,28 @@ def jwt_service(clock: Clock) -> JwtService:
     return JwtService(JWT_SECRET, TOKEN_TTL, clock)
 
 
+# ИНН физлиц из синтетики ЕГРЮЛ: директора сверяются по ИНН, поэтому тестовый пользователь
+# с ФИО директора получает и его ИНН.
+PERSON_INNS = {
+    "Петров Алексей Николаевич": "771401234587",
+    "Петрова Мария Сергеевна": "771402345674",
+    "Смирнова Ольга Викторовна": "770312345678",
+    "Соколов Дмитрий Андреевич": "770498765403",
+    "Иванова Елена Сергеевна": "770512345650",
+    "Кузнецов Игорь Валентинович": "770623456765",
+    "Лебедев Павел Олегович": "770734567870",
+    "Морозов Сергей Петрович": "771501234573",
+    "Васильева Анна Игоревна": "771502345660",
+    "Зуев Андрей Михайлович": "771601234560",
+}
+
+
 async def make_user(
     *,
     role: Role = Role.CLIENT,
     login: str = "client",
     full_name: str = "Петров Алексей Николаевич",
+    inn: str | None = None,
     password: str = PASSWORD,
     companies: tuple[UserCompany, ...] = (),
 ) -> User:
@@ -81,6 +98,7 @@ async def make_user(
         password_hash=await fast_hasher().hash(password),
         role=role,
         full_name=full_name,
+        inn=inn or (PERSON_INNS.get(full_name) if role is Role.CLIENT else None),
         passport_verified=True,
         created_at=NOW,
         companies=list(companies),
