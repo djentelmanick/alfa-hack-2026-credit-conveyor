@@ -928,7 +928,11 @@ DecisionRule <|-- ClassCCounterOfferRule
   варианта своя ставка по классу (сценарий 3: 26,5% без залога, 24,5% с залогом), `Decision.rate` равна ставке первого варианта.
 - `MANUAL_REVIEW`: в `Decision.rate` ставка по классу как подсказка аналитику (для D её нет).
 - `REJECTED` по классу D: в `reasons` коды факторов с отрицательными баллами, худший первым (или `RISK_CLASS_D`).
-  Антифрод-факторы (`FactorScore.client_visible = False`) в `reasons` не попадают.
+  Антифрод-факторы (`FactorScore.client_visible = False`) в `reasons` не попадают. Клиенту в `ClientDecision.reasons`
+  вместо кода фактора уходит его `explanation` из модели (или `label`, если пояснения нет).
+- Баллы, класс риска и факторы скоринга клиенту не передаются: в `ClientDecision` только исход, причины текстом,
+  ставка и варианты. Скоринг целиком видит аналитик в отчёте. `explanation` и `client_visible` хранятся
+  в `scoring_factors` вместе с баллами (миграция 0009).
 - `ClassCCounterOfferRule` получает `ScoringModel` в конструкторе и пересчитывает скоринг для кандидатов
   на копии заявки; `default_decision_rules(catalog, rates, scoring)`.
 - Если ни один вариант контрпредложения не проходит границы сумм продукта, решение `MANUAL_REVIEW`

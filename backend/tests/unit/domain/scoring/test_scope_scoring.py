@@ -10,7 +10,7 @@ from app.domain.products import ProductCatalog
 from app.domain.scoring import ScoringEngine
 from app.infra.mocks import SyntheticData
 from tests.fakes.context import collect_context, make_application, make_collateral
-from tests.fakes.scenarios import IVANOVA, KOLOS, SOKOLOV, TECHPROM
+from tests.fakes.scenarios import BYSTRY_GRUZ, IVANOVA, KOLOS, SOKOLOV, TECHPROM
 from tests.fakes.scoring import SCOPE_RESULTS
 
 STATEMENTS_DIR = (
@@ -58,7 +58,19 @@ async def _techprom(fixtures: SyntheticData) -> PipelineContext:
     return await collect_context(fixtures, application)
 
 
-SCENARIOS = {KOLOS: _kolos, SOKOLOV: _sokolov, IVANOVA: _ivanova, TECHPROM: _techprom}
+async def _bystry_gruz(fixtures: SyntheticData) -> PipelineContext:
+    return await collect_context(
+        fixtures, make_application(inn=BYSTRY_GRUZ, amount="1500000", term_months=24)
+    )
+
+
+SCENARIOS = {
+    KOLOS: _kolos,
+    SOKOLOV: _sokolov,
+    IVANOVA: _ivanova,
+    TECHPROM: _techprom,
+    BYSTRY_GRUZ: _bystry_gruz,
+}
 
 
 @pytest.mark.parametrize("inn", list(SCENARIOS))

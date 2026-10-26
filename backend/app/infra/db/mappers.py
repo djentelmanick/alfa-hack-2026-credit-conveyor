@@ -274,6 +274,8 @@ def application_to_row(app: Application) -> ApplicationRow:
                 label=f.label,
                 value=f.value,
                 points=f.points,
+                explanation=f.explanation,
+                client_visible=f.client_visible,
             )
             for i, f in enumerate(scoring.factors if scoring else ())
         ],
@@ -376,7 +378,14 @@ def application_from_row(row: ApplicationRow) -> Application:
             risk_class=RiskClass(_required(row.scoring_risk_class, "scoring_risk_class")),
             debt_load=_required(row.scoring_debt_load, "scoring_debt_load"),
             factors=tuple(
-                FactorScore(code=f.code, label=f.label, value=f.value, points=f.points)
+                FactorScore(
+                    code=f.code,
+                    label=f.label,
+                    value=f.value,
+                    points=f.points,
+                    explanation=f.explanation,
+                    client_visible=f.client_visible,
+                )
                 for f in row.scoring_factors
             ),
         )

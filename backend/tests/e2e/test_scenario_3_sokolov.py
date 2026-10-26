@@ -6,7 +6,7 @@
 
 from decimal import Decimal
 
-from tests.e2e.conftest import E2E, contract_files
+from tests.e2e.conftest import ANALYST, E2E, contract_files
 from tests.e2e.flow import (
     IE_CONSENTS,
     connect,
@@ -41,7 +41,14 @@ def test_sokolov_takes_3_6m_without_collateral_and_signs(e2e: E2E) -> None:
             e2e.client, token, "/applications/decision", {"application_id": application_id}
         )
         assert (decision["outcome"], decision["rate"]) == ("COUNTER_OFFER", "26.5")
-        assert (decision["scoring"]["total"], decision["scoring"]["risk_class"]) == (55, "B")
+        assert "scoring" not in decision
+        report = post(
+            e2e.client,
+            login(e2e.client, ANALYST),
+            "/analyst/applications/report",
+            {"application_id": application_id},
+        )
+        assert (report["scoring"]["total"], report["scoring"]["risk_class"]) == (55, "B")
         unsecured, secured = decision["offers"]
         assert (unsecured["variant"], unsecured["amount"], unsecured["rate"]) == (
             "UNSECURED",

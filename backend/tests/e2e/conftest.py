@@ -38,7 +38,7 @@ from app.main import (
 )
 from tests.fakes.auth import FixedClock, make_user
 from tests.fakes.runtime import InMemoryEventBus, InProcessTaskQueue
-from tests.fakes.scenarios import IVANOVA, KOLOS, ROMASHKA, SOKOLOV, TECHPROM
+from tests.fakes.scenarios import BYSTRY_GRUZ, IVANOVA, KOLOS, ROMASHKA, SOKOLOV, TECHPROM
 from tests.fakes.scoring import FixedScoringEngine
 
 # Логин, ФИО руководителя по ЕГРЮЛ, компания, форма бизнеса.
@@ -53,6 +53,7 @@ CLIENTS = {
     ),
     "ivanova": ("Иванова Елена Сергеевна", IVANOVA, "ИП ИВАНОВА ЕЛЕНА СЕРГЕЕВНА", CompanyKind.IE),
     "techprom": ("Кузнецов Игорь Валентинович", TECHPROM, 'ООО "ТЕХПРОМ"', CompanyKind.LLC),
+    "gruz": ("Морозов Андрей Викторович", BYSTRY_GRUZ, 'ООО "БЫСТРЫЙ ГРУЗ"', CompanyKind.LLC),
 }
 # Представители: компании не привязаны, доверенность прикладывают в сценарии.
 REPRESENTATIVES = {

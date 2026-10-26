@@ -121,6 +121,8 @@ erDiagram
         string label
         string value
         int points
+        text explanation
+        bool client_visible "антифрод клиенту не виден"
     }
     decisions {
         uuid id PK

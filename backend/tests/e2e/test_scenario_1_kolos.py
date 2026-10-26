@@ -10,7 +10,7 @@ from typing import Any
 
 from starlette.testclient import WebSocketTestSession
 
-from tests.e2e.conftest import E2E, contract_files
+from tests.e2e.conftest import ANALYST, E2E, contract_files
 from tests.e2e.flow import (
     API,
     auth,
@@ -73,7 +73,14 @@ def test_kolos_is_approved_at_23_5_with_live_statuses(e2e: E2E) -> None:
     decision = post(e2e.client, token, "/applications/decision", {"application_id": application_id})
     assert decision["outcome"] == "APPROVED"
     assert decision["rate"] == "23.5"
-    assert (decision["scoring"]["total"], decision["scoring"]["risk_class"]) == (90, "A")
+    assert "scoring" not in decision
+    report = post(
+        e2e.client,
+        login(e2e.client, ANALYST),
+        "/analyst/applications/report",
+        {"application_id": application_id},
+    )
+    assert (report["scoring"]["total"], report["scoring"]["risk_class"]) == (90, "A")
     assert decision["expires_at"] == APPROVED_EXPIRES_AT
 
     card = post(e2e.client, token, "/applications/get", {"application_id": application_id})
