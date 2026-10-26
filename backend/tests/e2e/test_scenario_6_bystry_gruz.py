@@ -1,14 +1,14 @@
 """Сценарий 6: ООО «Быстрый груз», 1,5 млн на 24 мес без залога.
 
 Закрытая просрочка 45 дней за год, нагрузка 55% и грузоперевозки дают −20 баллов, класс D:
-отказ без ручной проверки, а клиент видит, какие факторы снизили балл.
+отказ без ручной проверки, а клиент видит причины текстом, без баллов.
 """
 
 import pytest
 
 from app.domain.scoring import ScoringEngine, ScoringModel
 from app.infra.config.catalog import load_catalog
-from tests.e2e.conftest import E2E
+from tests.e2e.conftest import ANALYST, E2E
 from tests.e2e.flow import (
     connect,
     create_application,
@@ -47,19 +47,23 @@ def test_bystry_gruz_is_rejected_with_negative_factors(e2e: E2E) -> None:
     decision = post(e2e.client, token, "/applications/decision", {"application_id": application_id})
     assert decision["outcome"] == "REJECTED"
     assert "rate" not in decision or decision["rate"] is None
-    assert (decision["scoring"]["total"], decision["scoring"]["risk_class"]) == (-20, "D")
-    # Худшие факторы первыми, тексты берутся из модели скоринга.
+    # Клиент видит только причины текстом, без баллов и класса риска.
+    assert "scoring" not in decision
+    assert "key_factors" not in decision
     assert decision["reasons"] == [
         "Были серьёзные просрочки за последний год",
         "Высокая долговая нагрузка",
         "Отрасль с высоким уровнем риска",
     ]
-    assert {f["code"] for f in decision["scoring"]["factors"]}.isdisjoint(ANTIFRAUD_CODES)
-    assert [(f["label"], f["points"]) for f in decision["key_factors"]] == [
-        ("Кредитная история", -20),
-        ("Долговая нагрузка", -15),
-        ("Сумма заявки / годовая выручка", 15),
-    ]
+
+    report = post(
+        e2e.client,
+        login(e2e.client, ANALYST),
+        "/analyst/applications/report",
+        {"application_id": application_id},
+    )
+    assert (report["scoring"]["total"], report["scoring"]["risk_class"]) == (-20, "D")
+    assert {f["code"] for f in report["scoring"]["factors"]} >= ANTIFRAUD_CODES
 
     card = post(e2e.client, token, "/applications/get", {"application_id": application_id})
     assert card["allowed_actions"] == []

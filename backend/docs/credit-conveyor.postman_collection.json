@@ -6342,7 +6342,7 @@
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
                   "const d = pm.response.json();",
-                  "pm.test(\"класс D\", () => pm.expect(d.scoring.risk_class).to.eql(\"D\"));",
+                  "pm.test(\"баллы клиенту не передаются\", () => pm.expect(d).to.not.have.property(\"scoring\"));",
                   "pm.test(\"причины объяснены\", () => pm.expect(d.reasons).to.include(\"Высокая долговая нагрузка\"));"
                 ]
               }

@@ -1,4 +1,4 @@
-"""Решение для клиента: антифрод-факторы скрыты, причины отказа по классу D объяснены моделью."""
+"""Решение для клиента: без баллов, причины отказа по классу D объяснены моделью."""
 
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -36,12 +36,12 @@ def _view(reasons: tuple[str, ...]) -> DecisionView:
     return DecisionView(decision=decision, scoring=scoring, expires_at=None)
 
 
-def test_antifraud_factors_are_hidden_from_client() -> None:
-    out = ClientDecisionOut.from_view(_view(("CREDIT_HISTORY",)))
+def test_client_gets_no_scores() -> None:
+    out = ClientDecisionOut.from_view(_view(("CREDIT_HISTORY",))).model_dump()
 
-    assert out.scoring is not None
-    assert [f.code for f in out.scoring.factors] == ["CREDIT_HISTORY", "DEBT_LOAD"]
-    assert [f.label for f in out.key_factors] == ["Кредитная история", "Долговая нагрузка"]
+    assert "scoring" not in out
+    assert "key_factors" not in out
+    assert "-20" not in str(out)
 
 
 def test_factor_reasons_use_model_texts() -> None:

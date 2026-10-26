@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 import httpx
 
 from app.infra.storage.s3 import S3ClientFactory
-from tests.e2e.conftest import E2E
+from tests.e2e.conftest import ANALYST, E2E
 from tests.e2e.flow import (
     IE_CONSENTS,
     auth,
@@ -113,7 +113,14 @@ def test_ivanova_needs_info_then_approved_at_26_5(e2e: E2E) -> None:
     decision = post(e2e.client, token, "/applications/decision", {"application_id": application_id})
     assert decision["outcome"] == "APPROVED"
     assert decision["rate"] == "26.5"
-    assert (decision["scoring"]["total"], decision["scoring"]["risk_class"]) == (50, "B")
+    assert "scoring" not in decision
+    report = post(
+        e2e.client,
+        login(e2e.client, ANALYST),
+        "/analyst/applications/report",
+        {"application_id": application_id},
+    )
+    assert (report["scoring"]["total"], report["scoring"]["risk_class"]) == (50, "B")
 
     card = post(e2e.client, token, "/applications/get", {"application_id": application_id})
     assert "info_request" not in card

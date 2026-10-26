@@ -1125,6 +1125,7 @@
         "type": "string"
       },
       "ClientDecisionOut": {
+        "description": "Решение для клиента: исход и причины текстом. Баллы и класс риска видит только аналитик.",
         "properties": {
           "expires_at": {
             "anyOf": [
@@ -1137,13 +1138,6 @@
               }
             ],
             "title": "Expires At"
-          },
-          "key_factors": {
-            "items": {
-              "$ref": "#/components/schemas/KeyFactorOut"
-            },
-            "title": "Key Factors",
-            "type": "array"
           },
           "offers": {
             "items": {
@@ -1172,22 +1166,11 @@
             },
             "title": "Reasons",
             "type": "array"
-          },
-          "scoring": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ScoringOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
           }
         },
         "required": [
           "outcome",
           "reasons",
-          "key_factors",
           "offers"
         ],
         "title": "ClientDecisionOut",
@@ -2397,24 +2380,6 @@
         "title": "InnIn",
         "type": "object"
       },
-      "KeyFactorOut": {
-        "properties": {
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "points": {
-            "title": "Points",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "label",
-          "points"
-        ],
-        "title": "KeyFactorOut",
-        "type": "object"
-      },
       "LoginIn": {
         "additionalProperties": false,
         "properties": {
@@ -3500,32 +3465,6 @@
           "balance"
         ],
         "title": "ScheduleItemOut",
-        "type": "object"
-      },
-      "ScoringOut": {
-        "description": "Скоринг для клиента: антифрод-факторы (client_visible=False) видит только аналитик.",
-        "properties": {
-          "factors": {
-            "items": {
-              "$ref": "#/components/schemas/FactorScoreOut"
-            },
-            "title": "Factors",
-            "type": "array"
-          },
-          "risk_class": {
-            "$ref": "#/components/schemas/RiskClass"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "total",
-          "risk_class",
-          "factors"
-        ],
-        "title": "ScoringOut",
         "type": "object"
       },
       "SignatureStatus": {

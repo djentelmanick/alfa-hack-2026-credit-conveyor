@@ -28,16 +28,12 @@ from app.domain.enums import (
     DecisionOutcome,
     ProductCode,
     Purpose,
-    RiskClass,
     Role,
     SignatureStatus,
     Variant,
 )
 from app.domain.errors import FieldError
-from app.domain.scoring import ScoringResult
 from app.domain.value_objects import Collateral, Money
-
-KEY_FACTORS_LIMIT = 3
 
 
 class CollateralIn(RequestModel):
@@ -221,31 +217,6 @@ class FactorScoreOut(BaseModel):
     points: int
 
 
-class KeyFactorOut(BaseModel):
-    label: str
-    points: int
-
-
-class ScoringOut(BaseModel):
-    """Скоринг для клиента: антифрод-факторы (client_visible=False) видит только аналитик."""
-
-    total: int
-    risk_class: RiskClass
-    factors: list[FactorScoreOut]
-
-    @classmethod
-    def from_domain(cls, s: ScoringResult) -> Self:
-        return cls(
-            total=s.total,
-            risk_class=s.risk_class,
-            factors=[
-                FactorScoreOut(code=f.code, label=f.label, value=f.value, points=f.points)
-                for f in s.factors
-                if f.client_visible
-            ],
-        )
-
-
 class OfferOptionOut(BaseModel):
     id: UUID
     product_code: ProductCode
@@ -256,10 +227,10 @@ class OfferOptionOut(BaseModel):
 
 
 class ClientDecisionOut(BaseModel):
+    """Решение для клиента: исход и причины текстом. Баллы и класс риска видит только аналитик."""
+
     outcome: DecisionOutcome
     reasons: list[str]
-    key_factors: list[KeyFactorOut]
-    scoring: ScoringOut | None = None
     rate: RateStr | None = None
     offers: list[OfferOptionOut]
     expires_at: datetime | None = None
@@ -269,16 +240,11 @@ class ClientDecisionOut(BaseModel):
         d = view.decision
         codes = d.reasons or (d.rule_code,)
         factors = [f for f in view.scoring.factors if f.client_visible] if view.scoring else []
-        key = sorted((f for f in factors if f.points), key=lambda f: -abs(f.points))
         # Отказ по классу D называет факторы, снизившие балл: их текст даёт сама модель скоринга.
         explained = {f.code: f.explanation or f.label for f in factors}
         return cls(
             outcome=d.outcome,
             reasons=[explained.get(code) or reason_label(code) for code in codes],
-            key_factors=[KeyFactorOut(label=f.label, points=f.points) for f in key][
-                :KEY_FACTORS_LIMIT
-            ],
-            scoring=ScoringOut.from_domain(view.scoring) if view.scoring else None,
             rate=d.rate,
             offers=[
                 OfferOptionOut(

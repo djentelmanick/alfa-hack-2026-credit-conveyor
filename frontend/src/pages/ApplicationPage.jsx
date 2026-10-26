@@ -327,8 +327,8 @@ export function ApplicationPage() {
   const [app, history] = res.data;
   const refresh = () => res.reload({ silent: true });
   const reasons = app.decision?.reasons || [];
-  const factors = app.decision?.key_factors || [];
-  const showWhy = (reasons.length > 0 || factors.length > 0) && ["COUNTER_OFFER", "MANUAL_REVIEW", "REJECTED", "APPROVED"].includes(status);
+  // Баллы скоринга клиенту не показываем: только причины решения текстом.
+  const showWhy = reasons.length > 0 && ["COUNTER_OFFER", "MANUAL_REVIEW", "REJECTED", "APPROVED"].includes(status);
 
   const head = (
     <div className="stack stack-1">
@@ -374,14 +374,7 @@ export function ApplicationPage() {
         <Card>
           <div className="stack stack-2">
             <h2 className="h2">Почему так решили</h2>
-            {reasons.length > 0 && <ul className="list-plain list-lined">{reasons.map((r, i) => <li key={i}>{reasonLabel(r)}</li>)}</ul>}
-            {factors.length > 0 && (
-              <ul className="list-plain list-lined">
-                {factors.map((k, i) => (
-                  <li key={i} className="row row-4 row--between"><span>{k.label}</span><span className="num">{k.points > 0 ? `+${k.points}` : String(k.points).replace("-", "−")}</span></li>
-                ))}
-              </ul>
-            )}
+            <ul className="list-plain list-lined">{reasons.map((r, i) => <li key={i}>{reasonLabel(r)}</li>)}</ul>
           </div>
         </Card>
       )}

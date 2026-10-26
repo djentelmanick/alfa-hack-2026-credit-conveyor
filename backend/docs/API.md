@@ -467,12 +467,11 @@ interface ApplicationListItem {
   status: ApplicationStatus; updated_at: ISODateTime;
 }
 
+// Баллы, класс риска и факторы скоринга клиенту не передаются: они есть только в ApplicationReport.
 interface ClientDecision {
   outcome: DecisionOutcome;
   reasons: string[];             // ["Сумма выше лимита от выручки без залога"]; при отказе по классу D
                                  // пояснения факторов, снизивших балл: ["Высокая долговая нагрузка", ...]
-  key_factors: { label: string; points: number }[];   // до 3 факторов с наибольшим весом
-  scoring?: { total: number; risk_class: RiskClass; factors: FactorScore[] };  // без антифрод-факторов
   rate?: string;
   offers: OfferOption[];
   expires_at?: ISODateTime;
@@ -525,8 +524,6 @@ interface StatusTransitionOut {
 {
   "outcome": "COUNTER_OFFER",
   "reasons": ["Запрошенная сумма выше лимита от выручки для варианта без залога"],
-  "key_factors": [{"label": "Возраст бизнеса", "points": 20}, {"label": "Кредитная история", "points": 20}],
-  "scoring": {"total": 55, "risk_class": "B", "factors": []},
   "rate": "26.5",
   "offers": [
     {"id": "…", "product_code": "LUMP_SUM", "variant": "UNSECURED", "amount": "3600000.00", "term_months": 24, "rate": "26.5"},
